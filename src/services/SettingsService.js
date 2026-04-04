@@ -135,7 +135,7 @@ export const SettingsService = {
      * @returns {boolean}
      */
     importSetFromObject(setObject) {
-        if (!setObject.name) {
+        if (!setObject.name || !Array.isArray(setObject.global_blocks)) {
             return false;
         }
 
@@ -157,8 +157,8 @@ export const SettingsService = {
         try {
             const fileText = await getFileText(file);
             const extSet = JSON.parse(fileText);
-            if (!extSet.name) {
-                throw new Error('No name provided.');
+            if (!extSet.name || !Array.isArray(extSet.global_blocks)) {
+                throw new Error('Invalid ExtBlocks Set file.');
             }
 
             const set_idx = updateOrInsert(extensionSettings.ExtBlocks.sets, extSet);

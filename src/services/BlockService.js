@@ -386,8 +386,8 @@ export const BlockService = {
             }
         }
 
-        if (!block || !block.name) {
-            toastr.error('Could not import block: No name provided.');
+        if (!block || !block.name || block.global_blocks !== undefined) {
+            toastr.error('Could not import block: Invalid ExtBlocks Block file.');
             return false;
         }
 

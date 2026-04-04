@@ -14,6 +14,7 @@ function parseYaml(str) {
     try {
         return yaml.load(str);
     } catch (e) {
+        toastr.error(`[ExtBlocks] Failed to parse YAML in the accumulation block updater. Open DevTools for more details or try to regenerate the updater block.`);
         console.error('[ExtBlocks] Failed to parse YAML:', e);
         return {};
     }

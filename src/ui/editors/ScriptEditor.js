@@ -58,6 +58,7 @@ export const ScriptEditor = {
                 editorHtml.find('input[name="user_message"]').prop('checked', block.user_message ?? false);
                 editorHtml.find('input[name="char_message"]').prop('checked', block.char_message ?? true);
                 editorHtml.find('input[name="generation_pause"]').prop('checked', block.generation_pause ?? false);
+                editorHtml.find('input[name="swipe"]').prop('checked', block.swipe ?? false);
                 
                 const trigger_periodicity = (block.keyword && block.keyword !== '') ? "keyword" : "periodic";
                 editorHtml.find(`select[name="ExtBlocks-scripteditor-trigger-periodicity"]`).val(trigger_periodicity);
@@ -71,6 +72,7 @@ export const ScriptEditor = {
             }
         } else {
             editorHtml.find('input[name="disabled"]').prop('checked', false);
+            editorHtml.find('input[name="swipe"]').prop('checked', false);
             editorHtml.find('input[name="char_message"]').prop('checked', true);
             editorHtml.find(`select[name="ExtBlocks-scripteditor-trigger-periodicity"]`).val('periodic');
             changeTriggerPeriodicity('periodic');
@@ -201,6 +203,7 @@ export const ScriptEditor = {
                 user_message: editorHtml.find('input[name="user_message"]').prop('checked'),
                 char_message: editorHtml.find('input[name="char_message"]').prop('checked'),
                 generation_pause: editorHtml.find('input[name="generation_pause"]').prop('checked'),
+                swipe: editorHtml.find('input[name="swipe"]').prop('checked'),
                 period: editorHtml.find('input[name="period"]').val(),
                 keyword: trigger_periodicity === 'keyword' ? editorHtml.find('input[name="keyword"]').val() : '',
                 keyword_is_regex: editorHtml.find('input[name="keyword_is_regex"]').prop('checked'),

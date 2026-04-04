@@ -215,7 +215,10 @@ In the edit window, you can set the following for a block:
 - **Name**: The exact name of the block without `<` and `>`.
 - **Script Type**: `STScript` or `JS`.
 - **Script Text**: The code to be executed.
-- **Triggers, Periodicity, State**: Same as for generated blocks.
+- **Triggers**:
+	- `User Message`, `Char Message`, `Generation Pause`: Same as for generated blocks.
+	- `Swipe`: The script is executed after a message swipe.
+- **Periodicity, State**: Same as for generated blocks.
 - **Execution Order**: Whether the script runs before or after block generation.
 #### API for JS Scripts
 

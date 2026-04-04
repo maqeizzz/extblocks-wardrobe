@@ -135,6 +135,7 @@ export const EditorService = {
             script_type: data.script_type || 'stscript',
             script: String(data.script || ''),
             generation_pause: !!data.generation_pause,
+            swipe: !!data.swipe,
             period: parseInt(data.period) || 2,
             keyword: String(data.keyword || ''),
             keyword_is_regex: !!data.keyword_is_regex,

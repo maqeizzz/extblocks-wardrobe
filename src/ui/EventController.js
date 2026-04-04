@@ -1,5 +1,6 @@
-import { defaultExtPrefix, ExtTopic } from '../core/constants.js';
+import { defaultExtPrefix, ExtTopic, BlockType } from '../core/constants.js';
 import { extStates } from '../core/state.js';
+import { PluginRegistry } from '../core/PluginRegistry.js';
 import {
     stringToRegex,
     removeAfterRegexMatch,
@@ -147,6 +148,15 @@ export const EventController = {
             } else {
                 await BlockService.checkBlocksInFirstMessage();
                 await BlockService.swipeBlockExtra(messageId, current_swipe_id);
+            }
+
+            const scripts = BlockService.getBlocksByType([BlockType.SCRIPT], true)
+                .filter(block => block.swipe);
+            if (scripts.length > 0) {
+                const plugin = PluginRegistry.get(BlockType.SCRIPT);
+                if (plugin) {
+                    await plugin.execute(scripts, { messageId });
+                }
             }
         });
 

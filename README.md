@@ -158,7 +158,8 @@ In the edit window, you can set the following for a block:
 	- `Disabled`: Whether the block (and its generation) is disabled.
 	- `Hide From Display`: Whether to hide the block from the user's view.
 	- `Inject block`: Whether to insert the block into the context for the main generation.
-	 - `Background Generation`: Whether the block should be generated at background.
+	- `Background Generation`: Whether the block should be generated at background.
+	- `Apply Regexes`: Whether to apply regex transformations to the generated content.
 - **Injection Settings**:
 	- `Injection Role`: The role for injection (system, assistant, or user).
 	- `Injection Position`:

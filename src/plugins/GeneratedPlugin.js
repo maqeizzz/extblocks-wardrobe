@@ -4,6 +4,7 @@ import { extStates } from '../core/state.js';
 import { ApiService } from '../services/ApiService.js';
 import { BlockService } from '../services/BlockService.js';
 import { MacroService } from '../services/MacroService.js';
+import { getRegexedString } from '../../../../../extensions/regex/engine.js';
 
 const { chat, eventSource, event_types, addOneMessage, saveChat } = SillyTavern.getContext();
 
@@ -84,7 +85,12 @@ export const GeneratedPlugin = {
             }
 
             const generationTask = async () => {
-                const generatedContent = await this.generateBlockContent(blocksInGroup, messageId, allBlocks, additionalMacro);
+                let generatedContent = await this.generateBlockContent(blocksInGroup, messageId, allBlocks, additionalMacro);
+
+                if (blocksInGroup.some(block => block.apply_regex)) {
+                    generatedContent = getRegexedString(generatedContent, 2, { depth: 0, isPrompt: true });
+                }
+
                 eventSource.emit(ExtTopic.BLOCKS_GENERATED, { blocks: generatedContent, messageId });
 
                 if (!is_separate) {

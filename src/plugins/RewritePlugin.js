@@ -4,6 +4,7 @@ import { ApiService } from '../services/ApiService.js';
 import { BlockService } from '../services/BlockService.js';
 import { MacroService } from '../services/MacroService.js';
 import { getMultiBlockContentFromMessage } from '../utils/blockUtils.js';
+import { getRegexedString } from '../../../../../extensions/regex/engine.js';
 
 const { chat } = SillyTavern.getContext();
 
@@ -53,7 +54,11 @@ export const RewritePlugin = {
         let isPartialSuccess = false;
 
         for (const rewriteBlock of blocksToProcess) {
-            const rewrittenText = await this.generateRewrite(rewriteBlock, messageId, allBlocks, additionalMacro);
+            let rewrittenText = await this.generateRewrite(rewriteBlock, messageId, allBlocks, additionalMacro);
+
+            if (rewriteBlock.apply_regex) {
+                rewrittenText = getRegexedString(rewrittenText, 2, { depth: 0, isPrompt: true });
+            }
 
             if (rewrittenText && !rewrittenText.includes('Proxy error')) {
                 if (additionalMacro.textToRewrite && additionalMacro.textToRewrite !== chat[messageId].mes) {

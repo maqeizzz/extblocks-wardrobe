@@ -108,6 +108,7 @@ export const EditorService = {
             injection_depth: parseInt(data.injection_depth) || 4,
             generation_order: data.generation_order || 'before',
             background: !!data.background,
+            apply_regex: !!data.apply_regex,
             context: Array.isArray(data.context) ? data.context : [],
             api_preset: data.api_preset || 'big'
         };

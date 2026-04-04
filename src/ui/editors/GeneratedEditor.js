@@ -278,6 +278,7 @@ export const GeneratedEditor = {
                 editorHtml.find('input[name="inject_block"]').prop('checked', block.inject_block ?? false);
                 editorHtml.find('input[name="disabled"]').prop('checked', block.disabled ?? false);
                 editorHtml.find('input[name="background"]').prop('checked', block.background ?? false);
+                editorHtml.find('input[name="apply_regex"]').prop('checked', block.apply_regex ?? false);
                 editorHtml.find(`select[name="ExtBlocks-editor-injection-role"]`).val(block.injection_role ?? 0);
                 editorHtml.find(`select[name="ExtBlocks-editor-injection-position"]`).val(block.injection_position ?? 0);
                 editorHtml.find('input[name="injection_depth"]').val(block.injection_depth ?? 4);
@@ -391,6 +392,7 @@ export const GeneratedEditor = {
                 injection_depth: editorHtml.find('input[name="injection_depth"]').val(),
                 generation_order: editorHtml.find(`select[name="ExtBlocks-editor-generation-order"]`).val(),
                 background: editorHtml.find('input[name="background"]').prop('checked'),
+                apply_regex: editorHtml.find('input[name="apply_regex"]').prop('checked'),
                 context: contextItems,
                 api_preset: blockApiPreset
             };

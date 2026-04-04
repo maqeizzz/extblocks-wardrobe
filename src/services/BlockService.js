@@ -391,9 +391,7 @@ export const BlockService = {
             return false;
         }
 
-        if (!block.id) {
-            block.id = uuidv4();
-        }
+        block.id = uuidv4();
 
         const array = this._getBlockArray(isScoped);
         const existingData = array.find((e) => e.id === block.id);

@@ -1,4 +1,4 @@
-import { proxies, chat_completion_sources } from '../../../../../openai.js';
+import { proxies, chat_completion_sources, oai_settings } from '../../../../../openai.js';
 import { getEventSourceStream } from '../../../../../sse-stream.js';
 
 import { extStates } from '../core/state.js';
@@ -76,6 +76,25 @@ export const ApiService = {
     },
 
     /**
+     * Validates if the connection profile is defined and has the required fields.
+     * @param {object} connection_profile Connection profile object.
+     */
+    validateConnectionProfile(connection_profile) {
+        if (!connection_profile) {
+            toastr.error('[ExtBlocks] Connection profile is not defined.');
+            throw new Error('Connection profile is not defined.');
+        }
+        if (!connection_profile.mode || !connection_profile.api || !connection_profile.model) {
+            toastr.error('[ExtBlocks] Connection profile is missing required fields: mode, api and/or model.');
+            throw new Error('Connection profile is missing required fields: mode, api and/or model.');
+        }
+        if (connection_profile.mode !== 'cc') {
+            toastr.error('[ExtBlocks] Only the `cc` mode is supported for connection profiles.');
+            throw new Error('Only the `cc` mode is supported for connection profiles.');
+        }
+    },
+
+    /**
      * Maps API names to chat completion sources.
      */
     getChatCompletionSource(apiName) {
@@ -97,12 +116,9 @@ export const ApiService = {
     },
 
     /**
-     * Generates blocks using the specified messages and preset.
+     * Prepares the data for the generation request.
      */
-    async generateBlocks(messages, apiPresetName) {
-        const preset = this.getApiPreset(apiPresetName);
-        const connection_profile = this.getConnectionProfile(preset);
-        const cc_source = this.getChatCompletionSource(connection_profile.api);
+    prepareGenerateData(preset, connection_profile, cc_source, messages) {
         const stream = preset.stream ?? false;
         let generate_data = {
             'messages': messages,
@@ -110,28 +126,92 @@ export const ApiService = {
             'temperature': preset.temperature,
             'stream': stream,
             'chat_completion_source': cc_source,
-            'max_tokens': preset.max_tokens,
-            'reasoning_effort': preset.reasoning_effort
+            'max_tokens': preset.max_tokens
         };
-        const top_p = preset.top_p;
+
+        // Samplers
+        let top_p = preset.top_p;
         if (preset.top_p !== 1.0) {
+            if (cc_source === chat_completion_sources.COHERE) {
+                top_p = Math.min(Math.max(Number(top_p), 0.01), 0.99);
+            }
             generate_data['top_p'] = top_p;
         }
 
-        const proxy_preset = proxies.find(p => p.name === connection_profile.proxy);
-        if (proxy_preset && cc_source !== chat_completion_sources.OPENROUTER) {
-            generate_data['reverse_proxy'] = proxy_preset.url;
-            generate_data['proxy_password'] = proxy_preset.password;
+        // Reasoning effort
+        const reasoning_effort = preset.reasoning_effort;
+        if (reasoning_effort && reasoning_effort !== 'none') {
+            generate_data['reasoning_effort'] = reasoning_effort;
+            generate_data['include_reasoning'] = true;
         }
 
-        if (cc_source === chat_completion_sources.MAKERSUITE || cc_source === chat_completion_sources.CLAUDE) {
+        // Post-processing
+        const post_processing = connection_profile["prompt-post-processing"];
+        if (post_processing) {
+            generate_data['reasoning_effort'] = post_processing;
+        }
+
+        // Connection settings
+        const settings = oai_settings;
+        const api_url = connection_profile['api-url'];
+        if (connection_profile.proxy) {
+            const proxy_preset = proxies.find(p => p.name === connection_profile.proxy);
+            if (proxy_preset?.url) {
+                generate_data['reverse_proxy'] = proxy_preset.url;
+                generate_data['proxy_password'] = proxy_preset.password;
+            }
+        } 
+        if (cc_source === chat_completion_sources.CUSTOM) {
+            if (!settings.custom_url && !api_url) {
+                toastr.error('[ExtBlocks] No URL has been specified for the selected connection profile.');
+                throw new Error('No URL has been specified for the selected connection profile.');
+            }
+            generate_data["custom_url"] = api_url ?? settings.custom_url;
+            settings.custom_include_body !== undefined && (generate_data["custom_include_body"] = settings.custom_include_body);
+            settings.custom_exclude_body !== undefined && (generate_data["custom_exclude_body"] = settings.custom_exclude_body);
+            settings.custom_include_headers !== undefined && (generate_data["custom_include_headers"] = settings.custom_include_headers);
+        } else if (cc_source === chat_completion_sources.VERTEXAI) {
+            if (!settings.vertexai_region && !api_url) {
+                toastr.error('[ExtBlocks] No VertexAI Region has been specified for the selected connection profile.');
+                throw new Error('No VertexAI Region has been specified for the selected connection profile.');
+            }
+            generate_data['vertexai_region'] = api_url ?? settings.vertexai_region;
+            settings.vertexai_auth_mode !== undefined && (generate_data['vertexai_auth_mode'] = settings.vertexai_auth_mode);
+            settings.vertexai_express_project_id !== undefined && (generate_data['vertexai_express_project_id'] = settings.vertexai_express_project_id);
+        } else if (cc_source === chat_completion_sources.ZAI && !connection_profile.proxy && api_url) {
+            generate_data['zai_endpoint'] = api_url;
+        } else if (cc_source === chat_completion_sources.OPENROUTER) {
+            generate_data['use_fallback'] = settings.openrouter_use_fallback;
+            generate_data['provider'] = settings.openrouter_providers;
+            generate_data['quantizations'] = settings.openrouter_quantizations;
+            generate_data['allow_fallbacks'] = settings.openrouter_allow_fallbacks;
+            generate_data['middleout'] = settings.openrouter_middleout;
+        }
+
+        // Additional fields
+        if (cc_source === chat_completion_sources.MAKERSUITE || cc_source === chat_completion_sources.VERTEXAI || cc_source === chat_completion_sources.CLAUDE) {
             generate_data['use_sysprompt'] = true;
         }
+
+        return generate_data;
+    },
+
+    /**
+     * Generates blocks using the specified messages and preset.
+     */
+    async generateBlocks(messages, apiPresetName) {
+        const preset = this.getApiPreset(apiPresetName);
+        const connection_profile = this.getConnectionProfile(preset);
+        this.validateConnectionProfile(connection_profile);
+        const cc_source = this.getChatCompletionSource(connection_profile.api);
 
         if (preset.confirmation_jb) {
             messages.push({ role: MessageRole.ASSISTANT, content: "[Please confirm your request]" })
             messages.push({ role: MessageRole.USER, content: "[I confirm]" })
         }
+
+        const generate_data = this.prepareGenerateData(preset, connection_profile, cc_source, messages);
+        const stream = generate_data.stream;
 
         extStates.abortController = new AbortController();
         const generate_url = '/api/backends/chat-completions/generate';

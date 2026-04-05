@@ -272,20 +272,42 @@ export const BlockService = {
             return [];
         }
 
-        let combinedTemplate = `Block(s) template:\n${blocks.map(block => substituteParams(block.template, { dynamicMacros: additionalMacro })).join('\n')}`;
-        let combinedPrompt = `Block(s) prompt:\n${blocks.map(block => substituteParams(block.prompt, { dynamicMacros: additionalMacro })).join('\n')}`;
-        
+        const templates = blocks
+            .map(block => (substituteParams(block.template, { dynamicMacros: additionalMacro }) || '').trim())
+            .filter(t => t);
+        const prompts = blocks
+            .map(block => (substituteParams(block.prompt, { dynamicMacros: additionalMacro }) || '').trim())
+            .filter(p => p);
+
+        let blocksHeaderParts = [];
+        if (prompts.length > 0) {
+            blocksHeaderParts.push(`Block(s) prompt:\n${prompts.join('\n')}`);
+        }
+        if (templates.length > 0) {
+            blocksHeaderParts.push(`Block(s) template:\n${templates.join('\n')}`);
+        }
+
+        const blocksHeader = blocksHeaderParts.join('\n\n');
+
         let combinedContext = [];
         if (blocks.length > 0) {
             combinedContext = ContextService.getBlockCombinedContext(blocks[0], messageId, allBlocks, additionalMacro);
         }
 
+        if (!blocksHeader) {
+            if (combinedContext.length === 0) {
+                toastr.error('[ExtBlocks] Both blocks prompt/template and context are empty')
+                throw new Error('Both blocks prompt/template and context are empty');
+            }
+            return combinedContext;
+        }
+
         if (combinedContext.length > 0 && combinedContext[0].role === MessageRole.SYSTEM) {
-            combinedContext[0].content = `${combinedPrompt}\n\n${combinedTemplate}\n\n${combinedContext[0].content}`
+            combinedContext[0].content = `${blocksHeader}\n\n${combinedContext[0].content}`;
         } else if (combinedContext.length > 0) {
-            combinedContext.unshift({ role: MessageRole.SYSTEM, content: `${combinedPrompt}\n\n${combinedTemplate}` });
+            combinedContext.unshift({ role: MessageRole.SYSTEM, content: blocksHeader });
         } else {
-            combinedContext = [{ role: MessageRole.USER, content: `${combinedPrompt}\n\n${combinedTemplate}` }];
+            combinedContext = [{ role: MessageRole.USER, content: blocksHeader }];
         }
 
         return combinedContext;

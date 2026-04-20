@@ -271,11 +271,7 @@ export const ApiService = {
         if (preset.stream) {
             return data.content.trim();
         } else {
-            if (cc_source === chat_completion_sources.CLAUDE) {
-                return data.content[0].text.trim();
-            } else {
-                return data.choices[0].message.content.trim();
-            }
+            return data.content?.filter(p => p.type === 'text')?.map(p => p.text)?.join('\n\n') ?? data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? data?.text ?? data?.message?.content?.[0]?.text ?? data?.message?.tool_plan ?? '';
         }
     },
 

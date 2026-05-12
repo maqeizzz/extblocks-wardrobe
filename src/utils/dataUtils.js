@@ -1,3 +1,5 @@
+import { update as mingoUpdate } from '../../external/mingo.js';
+
 /**
  * Updates an existing item in a JSON array if it has the same name, or inserts it if not found.
  * @param {Object[]} jsonArray 
@@ -65,106 +67,33 @@ export function priorityCombineBlocks(globalBlocks, scopedBlocks) {
 }
 
 /**
- * Resolves a dot-notation path in an object.
- * @param {Object} doc The document to traverse.
- * @param {string} path The dot-notation path (e.g., "a.b.0.c").
- * @param {boolean} createMissing Whether to create missing intermediate objects/arrays.
- * @returns {{parent: Object|Array, lastKey: string}|null} The parent object and the last key in the path, or null if path cannot be resolved.
- */
-function resolvePath(doc, path, createMissing = false) {
-    if (!path || typeof path !== 'string') return null;
-    if (!path.includes('.')) {
-        return { parent: doc, lastKey: path };
-    }
-
-    const parts = path.split('.');
-    let current = doc;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        const nextPart = parts[i + 1];
-
-        if (current[part] === undefined || current[part] === null) {
-            if (createMissing) {
-                // If the next part is a numeric string, create an array, otherwise an object
-                current[part] = /^\d+$/.test(nextPart) ? [] : {};
-            } else {
-                return null;
-            }
-        }
-        current = current[part];
-
-        // If we hit a non-object/non-array while traversing, we can't continue
-        if (typeof current !== 'object' || current === null) {
-            return null;
-        }
-    }
-
-    return { parent: current, lastKey: parts[parts.length - 1] };
-}
-
-/**
- * Applies MongoDB-style update operators to a document.
- * Supported operators: $set, $inc, $push, $pull, $unset.
+ * Applies MongoDB-style update operators to a document using mingo library.
+ * Supports standard operators ($set, $inc, $push, etc.) and mingo-specific
+ * top-level fields like arrayFilters, condition, and options.
  * @param {Object} doc The document to update.
- * @param {Object} update The update object containing operators.
+ * @param {Object} updateObj The update object containing operators or mingo update parameters.
  * @returns {Object} The updated document.
  */
-export function applyMongoUpdate(doc, update) {
-    if (!update || typeof update !== 'object') return doc;
+export function applyMongoUpdate(doc, updateObj) {
+    if (!updateObj || typeof updateObj !== 'object') return doc;
 
-    const operators = {
-        $set: (d, k, v) => {
-            const resolved = resolvePath(d, k, true);
-            if (resolved) resolved.parent[resolved.lastKey] = v;
-        },
-        $unset: (d, k) => {
-            const resolved = resolvePath(d, k, false);
-            if (resolved) delete resolved.parent[resolved.lastKey];
-        },
-        $inc: (d, k, v) => {
-            const resolved = resolvePath(d, k, true);
-            if (resolved) {
-                const current = resolved.parent[resolved.lastKey] || 0;
-                resolved.parent[resolved.lastKey] = current + v;
-            }
-        },
-        $push: (d, k, v) => {
-            const resolved = resolvePath(d, k, true);
-            if (resolved) {
-                if (!Array.isArray(resolved.parent[resolved.lastKey])) {
-                    resolved.parent[resolved.lastKey] = [];
-                }
-                if (Array.isArray(v)) {
-                    resolved.parent[resolved.lastKey].push(...v);
-                } else {
-                    resolved.parent[resolved.lastKey].push(v);
-                }
-            }
-        },
-        $pull: (d, k, v) => {
-            const resolved = resolvePath(d, k, false);
-            if (resolved && Array.isArray(resolved.parent[resolved.lastKey])) {
-                const arr = resolved.parent[resolved.lastKey];
-                const index = arr.indexOf(v);
-                if (index !== -1) {
-                    arr.splice(index, 1);
-                }
-            }
-        }
-    };
+    const { arrayFilters, condition, options, ...rest } = updateObj;
 
-    for (const op in update) {
-        if (operators[op]) {
-            for (const key in update[op]) {
-                operators[op](doc, key, update[op][key]);
+    // Normalize update object to ensure all remaining top-level keys are operators
+    const modifier = {};
+    for (const key in rest) {
+        if (key.startsWith('$')) {
+            modifier[key] = rest[key];
+        } else {
+            if (!modifier.$set) {
+                modifier.$set = {};
             }
-        } else if (!op.startsWith('$')) {
-            // Default to $set behavior for top-level keys if no operator is provided
-            const resolved = resolvePath(doc, op, true);
-            if (resolved) resolved.parent[resolved.lastKey] = update[op];
+            modifier.$set[key] = rest[key];
         }
     }
+    for (const op in modifier) {
+        mingoUpdate(doc, { [op]: modifier[op] }, arrayFilters, condition, options);
+    }
 
-    return doc;
+return doc;
 }

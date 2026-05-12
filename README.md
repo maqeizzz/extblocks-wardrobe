@@ -113,14 +113,18 @@ In the edit window, you can set the following for a block:
 	```
 
 	**Example of an updater block**
-	The updater block uses **MongoDB-style operators** in YAML format to modify the state. Supported operators include:
+	The updater block uses **MongoDB-style operators** (powered by `mingo` library) in YAML format to modify the state. Supported operators include:
 	- `$set`: Sets the value of a field. Supports dot notation for nested fields (e.g., `path.to.field`).
 	- `$inc`: Increments/decrements a numeric field. Supports dot notation.
 	- `$push`: Adds an item to an array. Supports dot notation.
 	- `$pull`: Removes an item from an array. Supports dot notation.
 	- `$unset`: Removes a field. Supports dot notation.
+	- **And others**: `$min`, `$max`, `$mul`, `$rename`, `$addToSet`, `$pop`, `$bit`, etc.
 
-	**Note:** Dot notation also supports numeric indices for arrays (e.g., `items.0.name`).
+	**Advanced features:**
+	- **Dot notation**: Supports numeric indices for arrays (e.g., `items.0.name`).
+	- **arrayFilters**: Allows updating specific elements in an array that match a condition.
+	- **condition**: Optional condition that must be met for the update to apply.
 
 	```yaml
 	<example updater>
@@ -129,6 +133,7 @@ In the edit window, you can set the following for a block:
 	  Stats.Strength: 15
 	  Stats:
 	    Agility: 20
+	  "Inventory.$[item].quality": "Excellent"
 	$inc:
 	  Gold: 5
 	$push:
@@ -138,6 +143,8 @@ In the edit window, you can set the following for a block:
 	      character2: Azarel
 	$pull:
 	  Inventory: Apple
+	arrayFilters:
+	  - "item": "Sword"
 	</example updater>
 	```
 ### Generated Blocks

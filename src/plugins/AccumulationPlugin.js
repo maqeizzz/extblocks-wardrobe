@@ -65,7 +65,14 @@ export const AccumulationPlugin = {
                 let updaterContent = blockUpdaterStr;
 
                 const updateOps = parseYaml(updaterContent);
-                const updatedBlock = applyMongoUpdate(blockJson, updateOps);
+                let updatedBlock;
+                try {
+                    updatedBlock = applyMongoUpdate(blockJson, updateOps);
+                } catch (e) {
+                    toastr.error(`[ExtBlocks] Failed to apply update in the accumulation block. Open DevTools for more details.`);
+                    console.error('[ExtBlocks] Failed to apply update:', e);
+                    continue;
+                }
                 
                 const newContent = stringifyYaml(updatedBlock);
                 const updatedBlockStr = `${`<${block.name}>`}\n${newContent.trim()}\n${`</${block.name}>`}`;

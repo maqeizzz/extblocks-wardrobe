@@ -16,20 +16,17 @@ const {
 
 export const AccumulationEditor = {
     /**
-     * Opens the editor for an Accumulation block.
-     * @param {string|null} existingId - The ID of the block to edit, or null for a new block.
-     * @param {boolean} isScoped - Whether the block is character-scoped.
-     */
+    * Opens the editor for an Accumulation block.
+    * @param {string|null} existingId - The ID of the block to edit, or null for a new block.
+    * @param {boolean} isScoped - Whether the block is character-scoped.
+    */
     async open(existingId, isScoped) {
         const editorHtml = $(await renderExtensionTemplateAsync(templates_path, ElementTemplate.ACCUMULATION_EDITOR));
         const array = (isScoped ? characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks : extensionSettings.ExtBlocks.sets[extensionSettings.ExtBlocks.active_set_idx].global_blocks) ?? [];
-
-        let existingBlockIndex = -1;
-
+        
         if (existingId) {
-            existingBlockIndex = array.findIndex((block) => block.id === existingId);
-            if (existingBlockIndex !== -1) {
-                const block = array[existingBlockIndex];
+            const block = array.find((b) => b.id === existingId);
+            if (block) {
                 editorHtml.find('.ExtBlocks-accumulationeditor-block-name').val(block.name);
                 editorHtml.find('.ExtBlocks-accumulationeditor-blockupdater-name').val(block.updater_name);
                 editorHtml.find('input[name="user_message"]').prop('checked', block.user_message ?? false);
@@ -45,7 +42,7 @@ export const AccumulationEditor = {
             editorHtml.find('input[name="disabled"]').prop('checked', false);
             editorHtml.find('input[name="char_message"]').prop('checked', true);
         }
-
+        
         editorHtml.find('#ExtBlocks-accumulationeditor-copy-prompt').on('click', () => {
             const blockName = editorHtml.find('.ExtBlocks-accumulationeditor-block-name').val() || 'block_name';
             const updaterName = editorHtml.find('.ExtBlocks-accumulationeditor-blockupdater-name').val() || 'updater_name';
@@ -65,7 +62,7 @@ arrayFilters:
             navigator.clipboard.writeText(prompt);
             toastr.success('Default prompt copied to clipboard!');
         });
-
+        
         const popupResult = await callPopup(editorHtml, 'confirm', undefined, { okButton: 'Save' });
         if (popupResult) {
             const blockData = {
@@ -82,9 +79,9 @@ arrayFilters:
                 injection_position: editorHtml.find(`select[name="ExtBlocks-accumulationeditor-injection-position"]`).val(),
                 injection_depth: editorHtml.find('input[name="injection_depth"]').val(),
             };
-
+            
             const preparedBlock = EditorService.prepareBlockForSave(blockData);
-            await BlockService.saveBlock(preparedBlock, existingBlockIndex, isScoped);
+            await BlockService.saveBlock(preparedBlock, isScoped);
             await MainUI.loadBlocks();
         }
     }

@@ -47,11 +47,9 @@ export const ScriptEditor = {
             editorHtml.find(`select[name="ExtBlocks-scripteditor-trigger-periodicity"]`).prop('disabled', isPaused);
         };
 
-        let existingBlockIndex = -1;
         if (existingId) {
-            existingBlockIndex = array.findIndex((block) => block.id === existingId);
-            if (existingBlockIndex !== -1) {
-                const block = array[existingBlockIndex];
+            const block = array.find((b) => b.id === existingId);
+            if (block) {
                 editorHtml.find('.ExtBlocks-scripteditor-block-name').val(block.name);
                 editorHtml.find(`select[name="ExtBlocks-scripteditor-script-type"]`).val(block.script_type ?? 'stscript');
                 editorHtml.find('.ExtBlocks-scripteditor-script').val(block.script ?? '');
@@ -211,7 +209,7 @@ export const ScriptEditor = {
             };
 
             const preparedBlock = EditorService.prepareBlockForSave(blockData);
-            await BlockService.saveBlock(preparedBlock, existingBlockIndex, isScoped);
+            await BlockService.saveBlock(preparedBlock, isScoped);
             await MainUI.loadBlocks();
         }
     }

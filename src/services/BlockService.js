@@ -57,9 +57,41 @@ export const BlockService = {
     },
 
     /**
+     * Removes duplicate blocks from an array based on ID or Name.
+     */
+    deduplicateBlocks(array) {
+        if (!Array.isArray(array)) return false;
+        let hasDuplicates = false;
+        const uniqueBlocks = [];
+        const seenIds = new Set();
+        const seenNames = new Set();
+        
+        for (const block of array) {
+            if (!block.id) {
+                block.id = uuidv4();
+                hasDuplicates = true; // Not a duplicate, but needs saving
+            }
+            if (!seenIds.has(block.id) && !seenNames.has(block.name)) {
+                seenIds.add(block.id);
+                seenNames.add(block.name);
+                uniqueBlocks.push(block);
+            } else {
+                hasDuplicates = true;
+            }
+        }
+        
+        if (hasDuplicates) {
+            array.length = 0;
+            array.push(...uniqueBlocks);
+        }
+        
+        return hasDuplicates;
+    },
+
+    /**
      * Saves or updates a block.
      */
-    async saveBlock(block, index, isScoped) {
+    async saveBlock(block, isScoped) {
         const array = this._getBlockArray(isScoped);
 
         if (!block.id) {
@@ -72,6 +104,8 @@ export const BlockService = {
         }
 
         const existingData = array.find((e) => e.name === block.name);
+        const index = array.findIndex((e) => e.id === block.id);
+
         if (existingData && index === -1) {
             toastr.error('Could not save block: The block name must be unique.');
             return;

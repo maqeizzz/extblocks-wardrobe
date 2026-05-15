@@ -19,7 +19,7 @@ import { ScriptEditor } from './editors/ScriptEditor.js';
 const { 
     writeExtensionField, extensionSettings,
     renderExtensionTemplateAsync, characters, uuidv4,
-    callPopup, chat
+    callPopup, chat, saveSettingsDebounced
  } = SillyTavern.getContext();
 
 export const MainUI = {
@@ -56,7 +56,7 @@ export const MainUI = {
 
         const blockTemplate = $(await renderExtensionTemplateAsync(templates_path, ElementTemplate.BLOCK));
 
-        const renderBlock = async (container, block, isScoped, index) => {
+        const renderBlock = async (container, block, isScoped) => {
             const blockHtml = blockTemplate.clone();
 
             if (!block.id) {
@@ -153,7 +153,7 @@ export const MainUI = {
                 currentPreset = presets[(currentIndex + 1) % presets.length];
                 block.api_preset = currentPreset;
                 updateIcon();
-                await BlockService.saveBlock(block, index, isScoped);
+                await BlockService.saveBlock(block, isScoped);
                 await this.loadBlocks();
             }.bind(this));
 
@@ -165,7 +165,7 @@ export const MainUI = {
                 if (block.disabled) {
                     BlockService.removeBlockInject(block);
                 }
-                await BlockService.saveBlock(block, index, isScoped);
+                await BlockService.saveBlock(block, isScoped);
             };
 
             $checkbox.on('change', async function () {
@@ -202,8 +202,22 @@ export const MainUI = {
             $(container).append(blockHtml);
         };
 
-        extStates.current_set.global_blocks.forEach((block, index) => renderBlock('#ExtBlocks-blocks-global-list', block, false, index));
-        characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks?.forEach((block, index) => renderBlock('#ExtBlocks-blocks-scoped-list', block, true, index));
+        let needsSave = false;
+        if (BlockService.deduplicateBlocks(extStates.current_set.global_blocks)) {
+            needsSave = true;
+        }
+
+        const scopedBlocks = characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks;
+        if (scopedBlocks && BlockService.deduplicateBlocks(scopedBlocks)) {
+            await writeExtensionField(SillyTavern.getContext().characterId, extName, scopedBlocks);
+        }
+
+        if (needsSave) {
+            saveSettingsDebounced();
+        }
+
+        extStates.current_set.global_blocks.forEach((block) => renderBlock('#ExtBlocks-blocks-global-list', block, false));
+        characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks?.forEach((block) => renderBlock('#ExtBlocks-blocks-scoped-list', block, true));
 
         if (extStates.ExtBlocks_settings.extblocks_is_enabled) {
             await BlockService.updateDisplayForBlocks();

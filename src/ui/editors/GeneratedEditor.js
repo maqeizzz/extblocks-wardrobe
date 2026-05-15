@@ -32,7 +32,6 @@ export const GeneratedEditor = {
         let contextItems = [];
         let editingContextItemId = null;
         let isResettingType = false;
-        let existingBlockIndex = -1;
         let blockApiPreset = 'big';
 
         // --- Context Management ---
@@ -254,9 +253,8 @@ export const GeneratedEditor = {
         // --- Initialization ---
 
         if (existingId) {
-            existingBlockIndex = array.findIndex((block) => block.id === existingId);
-            if (existingBlockIndex !== -1) {
-                const block = array[existingBlockIndex];
+            const block = array.find((b) => b.id === existingId);
+            if (block) {
                 contextItems = (block.context || []).slice();
                 blockApiPreset = block.api_preset || 'big';
                 
@@ -398,7 +396,7 @@ export const GeneratedEditor = {
             };
 
             const preparedBlock = EditorService.prepareBlockForSave(blockData);
-            await BlockService.saveBlock(preparedBlock, existingBlockIndex, isScoped);
+            await BlockService.saveBlock(preparedBlock, isScoped);
             await MainUI.loadBlocks();
         }
     }

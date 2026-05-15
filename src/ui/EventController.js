@@ -29,10 +29,6 @@ export const EventController = {
      */
     init() {
         eventSource.makeFirst(event_types.CHAT_CHANGED, async () => {
-            if (!extensionSettings.ExtBlocks.extblocks_is_enabled) {
-                return;
-            }
-
             if (SillyTavern.getContext().characterId === undefined) {
                 return;
             }
@@ -46,7 +42,9 @@ export const EventController = {
                 extStates.pauseCounter = 0;
             }
 
-            MainUI.addEditButtons();
+            if (extensionSettings.ExtBlocks.extblocks_is_enabled) {
+                MainUI.addEditButtons();
+            }
         });
 
         eventSource.makeFirst(event_types.MESSAGE_EDITED, () => {

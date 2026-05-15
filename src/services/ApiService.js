@@ -148,7 +148,7 @@ export const ApiService = {
         // Post-processing
         const post_processing = connection_profile["prompt-post-processing"];
         if (post_processing) {
-            generate_data['reasoning_effort'] = post_processing;
+            generate_data['custom_prompt_post_processing'] = post_processing;
         }
 
         // Connection settings

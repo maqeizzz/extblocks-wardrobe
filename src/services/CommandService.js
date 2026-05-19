@@ -2,14 +2,19 @@ import { system_avatar, system_message_types } from '../../../../../../script.js
 import { BlockService } from './BlockService.js';
 import { GenerationService } from './GenerationService.js';
 import { ContextService } from './ContextService.js';
+import { MacroService } from './MacroService.js';
+import { extStates } from '../core/state.js';
 
-const { 
-    substituteParams, 
+const {
+    substituteParams,
     chat,
     saveChat,
-    addOneMessage, 
-    eventSource, 
-    event_types 
+    addOneMessage,
+    eventSource,
+    event_types,
+    extensionSettings,
+    saveSettingsDebounced,
+    characters,
 } = SillyTavern.getContext();
 
 export const CommandService = {
@@ -157,6 +162,58 @@ export const CommandService = {
             addOneMessage(message);
             await eventSource.emit(event_types.USER_MESSAGE_RENDERED, (chat.length - 1));
             await saveChat();
+        }
+        return '';
+    },
+
+    /**
+     * Callback for the status slash command.
+     */
+    async toggleExtensionCallback(_, value) {
+        const isEnabled = String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on' || value === '1';
+        extensionSettings.ExtBlocks.extblocks_is_enabled = isEnabled;
+        if (isEnabled) {
+            await BlockService.updateDisplayForBlocks();
+            MacroService.registerExtensionMacros();
+        } else {
+            MacroService.unregisterExtensionMacros();
+            if (SillyTavern.getContext().characterId !== undefined) {
+                await BlockService.purgeAllBlocksDisplayText();
+                BlockService.removeAllBlockInjects();
+            }
+        }
+        saveSettingsDebounced();
+        $('#extblocks_is_enabled').prop('checked', isEnabled);
+        return '';
+    },
+
+    /**
+     * Callback for the block-status slash command.
+     */
+    async toggleBlockCallback(args, value) {
+        if (!args.name) {
+            toastr.warning(`No block name provided`);
+            return '';
+        }
+        const isEnabled = String(value).toLowerCase() === 'true' || String(value).toLowerCase() === 'on' || value === '1';
+        const scope = args.scope || 'preset';
+        const isScoped = scope === 'scoped';
+        const name = args.name;
+
+        const blocks = isScoped
+            ? (characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks ?? [])
+            : (extStates.current_set?.global_blocks ?? []);
+            
+        const block = blocks.find(b => b.name === name);
+        if (block) {
+            block.disabled = !isEnabled;
+            if (block.disabled) {
+                BlockService.removeBlockInject(block);
+            }
+            await BlockService.saveBlock(block, isScoped);
+            $(`#${block.id} .disable_ExtBlocks`).prop('checked', block.disabled);
+        } else {
+            toastr.error(`Block "${name}" not found in ${scope} scope.`);
         }
         return '';
     }

@@ -400,6 +400,12 @@ Generated blocks are stored within messages and can be edited. Click the three d
 -   **/extblocks-execute-script**: Executes script blocks. The command works even if the block is disabled.
     -   `name` (required): The name(s) of the script block(s), separated by commas.
 -   **/extblocks-abort-generation**: Aborts the current block generation.
+-   **/extblocks-status**: Enables or disables the extension.
+    -   Unnamed argument: `true`/`false` or `on`/`off`.
+-   **/extblocks-block-status**: Enables or disables a specific block.
+    -   `name` (required): The name of the block.
+    -   `scope` (optional): `preset` (global) or `scoped` (character-specific). Defaults to `preset`.
+    -   Unnamed argument: `true`/`false` or `on`/`off`.
 
 ## Macros
 

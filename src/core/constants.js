@@ -82,7 +82,9 @@ export const ExtSlashCommand = {
     STORAGE_PURGE: 'extblocks-storage-purge',
     STORAGE_EXPORT: 'extblocks-storage-export',
     FLUSH_INJECTS: 'extblocks-flushinjects',
-    ABORT: 'extblocks-abort-generation'
+    ABORT: 'extblocks-abort-generation',
+    STATUS: 'extblocks-status',
+    BLOCK_STATUS: 'extblocks-block-status'
 };
 
 export const MacroName = {

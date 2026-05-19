@@ -18,7 +18,9 @@ const {
     runBlockRegenerationCallback,
     runRewriteBlocksCallback,
     runScriptsExecutionCallback,
-    exportBlocksCallback
+    exportBlocksCallback,
+    toggleExtensionCallback,
+    toggleBlockCallback
 } = CommandService;
 
 export const SlashCommandController = {
@@ -138,6 +140,45 @@ export const SlashCommandController = {
             },
             returns: 'void',
             helpString: 'Aborts the current block generation.',
+        }));
+
+        SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+            name: ExtSlashCommand.STATUS,
+            callback: toggleExtensionCallback,
+            returns: 'void',
+            unnamedArgumentList: [
+                new SlashCommandArgument(
+                    'status', [ARGUMENT_TYPE.BOOLEAN], true, false, 'true'
+                ),
+            ],
+            helpString: 'Enables or disables the ExtBlocks extension.',
+        }));
+
+        SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+            name: ExtSlashCommand.BLOCK_STATUS,
+            callback: toggleBlockCallback,
+            returns: 'void',
+            namedArgumentList: [
+                SlashCommandNamedArgument.fromProps({
+                    name: 'name',
+                    description: 'block name',
+                    typeList: [ARGUMENT_TYPE.STRING],
+                    isRequired: true,
+                }),
+                SlashCommandNamedArgument.fromProps({
+                    name: 'scope',
+                    description: 'scope (preset or scoped)',
+                    typeList: [ARGUMENT_TYPE.STRING],
+                    isRequired: false,
+                    defaultValue: 'preset',
+                })
+            ],
+            unnamedArgumentList: [
+                new SlashCommandArgument(
+                    'status', [ARGUMENT_TYPE.BOOLEAN], true, false, 'true'
+                ),
+            ],
+            helpString: 'Enables or disables a specific block.',
         }));
     }
 };

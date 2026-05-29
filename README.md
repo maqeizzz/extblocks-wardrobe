@@ -280,10 +280,11 @@ In the edit window, you can set the following for a block:
     - `messageId`, `allBlocks`, `additionalMacro`: Same as above.
     - `is_separate` (optional, boolean, default: `false`): If `true`, blocks are placed in a new system message instead of the message with `messageId`.
 
-- `(async) GenerationService.handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro, is_separate)`: Handles the processing and generation of all blocks for a given message.
+- `(async) GenerationService.handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro, is_separate, parallel)`: Handles the processing and generation of all blocks for a given message.
   - `isUser` (boolean): Whether the message is from the user.
   - `triggeredBlocks`: An array of blocks to be processed.
   - `messageId`, `allBlocks`, `additionalMacro`, `is_separate`: Same as above.
+  - `parallel` (optional, boolean, default: `false`): If `true`, non-background blocks are generated in parallel.
 
 - `BlockService.injectBlock(block, blockConfig)`: Injects a block's state into the main context.
   - `block` (string): The block's state.
@@ -369,6 +370,18 @@ In the edit window, you can set the following for a block:
         const blockState = ContextService.getPreviousBlockContextUnconditional(blockConfig, messageId, true);
         BlockService.injectBlock(blockState, blockConfig);
     }
+    ```
+
+6)  **Generate and insert multiple blocks concurrently (parallel generation):**
+    ```javascript
+    const messageId = context.chat.length - 1;
+    const lastMessage = context.chat[messageId];
+    const isUser = lastMessage.is_user;
+    const allBlocks = BlockService.getAllBlocks();
+    const triggeredBlocks = allBlocks.filter((e) => ['thinking', 'reflexion'].includes(e.name));
+
+    // Pass the last optional parameter (parallel) as true
+    await GenerationService.handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, {}, false, true);
     ```
 ---
 

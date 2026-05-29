@@ -65,7 +65,7 @@ export const GeneratedPlugin = {
      * @returns {Promise<string[]>} List of generated block contents.
      */
     async execute(blocks, options = {}) {
-        const { messageId, allBlocks, additionalMacro = {}, is_separate = false } = options;
+        const { messageId, allBlocks, additionalMacro = {}, is_separate = false, parallel = false } = options;
         const groupedBlocks = this.groupBlocksByContext(blocks);
         const blocksList = [];
 
@@ -76,6 +76,7 @@ export const GeneratedPlugin = {
             toastr.info(`${defaultExtPrefix} Generating, please wait...`);
         }
 
+        const promises = [];
         for (const context in groupedBlocks) {
             const blocksInGroup = groupedBlocks[context];
             const isBackground = blocksInGroup[0].background ?? false;
@@ -123,9 +124,18 @@ export const GeneratedPlugin = {
                     toastr.error(`${defaultExtPrefix} Background generation failed for "${blocksInGroup.map(b => b.name).join(', ')}".`);
                 });
             } else {
-                const generatedContent = await generationTask();
-                blocksList.push(generatedContent);
+                if (parallel) {
+                    promises.push(generationTask());
+                } else {
+                    const generatedContent = await generationTask();
+                    blocksList.push(generatedContent);
+                }
             }
+        }
+
+        if (parallel && promises.length > 0) {
+            const results = await Promise.all(promises);
+            blocksList.push(...results);
         }
 
         if (hasForegroundBlocks) {

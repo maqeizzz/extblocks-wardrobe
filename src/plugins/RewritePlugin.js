@@ -53,19 +53,22 @@ export const RewritePlugin = {
         let isSuccess = true;
         let isPartialSuccess = false;
 
+        const localMacro = { ...additionalMacro };
+
         for (const rewriteBlock of blocksToProcess) {
-            let rewrittenText = await this.generateRewrite(rewriteBlock, messageId, allBlocks, additionalMacro);
+            let rewrittenText = await this.generateRewrite(rewriteBlock, messageId, allBlocks, localMacro);
 
             if (rewriteBlock.apply_regex) {
                 rewrittenText = getRegexedString(rewrittenText, 2, { depth: 0, isPrompt: true });
             }
 
             if (rewrittenText && !rewrittenText.includes('Proxy error')) {
-                if (additionalMacro.textToRewrite && additionalMacro.textToRewrite !== chat[messageId].mes) {
-                    chat[messageId].mes = chat[messageId].mes.replace(additionalMacro.textToRewrite, rewrittenText);
+                if (localMacro.textToRewrite && localMacro.textToRewrite !== chat[messageId].mes) {
+                    chat[messageId].mes = chat[messageId].mes.replace(localMacro.textToRewrite, rewrittenText);
                 } else {
                     chat[messageId].mes = rewrittenText;
                 }
+                localMacro.textToRewrite = rewrittenText;
                 isPartialSuccess = true;
             } else {
                 isSuccess = false;

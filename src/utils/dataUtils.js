@@ -92,7 +92,16 @@ export function applyMongoUpdate(doc, updateObj) {
         }
     }
     for (const op in modifier) {
-        mingoUpdate(doc, { [op]: modifier[op] }, arrayFilters, condition, options);
+        let opValue = modifier[op];
+        if ((op === '$push' || op === '$addToSet') && typeof opValue === 'object' && opValue !== null) {
+            for (const field in opValue) {
+                const fieldVal = opValue[field];
+                if (Array.isArray(fieldVal)) {
+                    opValue[field] = { $each: fieldVal };
+                }
+            }
+        }
+        mingoUpdate(doc, { [op]: opValue }, arrayFilters, condition, options);
     }
 
 return doc;

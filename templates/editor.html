@@ -265,6 +265,7 @@
                                     <option value="text">Text</option>
                                     <option value="last_messages">Last messages</option>
                                     <option value="last_messages_keyword">Last messages by keyword</option>
+                                    <option value="last_messages_by_block">Last messages by block</option>
                                     <option value="previous_block">Previous block</option>
                                 </select>
                                 
@@ -405,6 +406,63 @@
                                     <div class="flex-container">
                                         <input
                                         class="ExtBlocks-editor-context-builder-keywordmessages-charsuffix text_pole textarea_compact"
+                                        type="text" />
+                                    </div>
+                                </div>
+                                
+                                
+                                <div id="ExtBlocks-editor-context-builder-lastmessagesbyblock" style="display:none;" class="wide100p">
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-blockname" class="title_restorable">
+                                        <small>Block Name</small>
+                                    </label>
+                                    <div class="wide100p">
+                                        <input
+                                        class="ExtBlocks-editor-context-builder-lastmessagesbyblock-blockname text_pole textarea_compact"
+                                        placeholder="Exact block name without angle brackets."
+                                        type="text" />
+                                    </div>
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-separator" class="title_restorable">
+                                        <small>Messages Separator</small>
+                                    </label>
+                                    <select name="ExtBlocks-editor-context-builder-lastmessagesbyblock-separator" class="text_pole">
+                                        <option value="double_newline">Double newline</option>
+                                        <option value="newline">Newline</option>
+                                        <option value="space">Space</option>
+                                    </select>
+                                    
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-userprefix" class="title_restorable">
+                                        <small>User Prefix</small>
+                                    </label>
+                                    <div class="flex-container">
+                                        <input
+                                        class="ExtBlocks-editor-context-builder-lastmessagesbyblock-userprefix text_pole textarea_compact"
+                                        type="text" />
+                                    </div>
+                                    
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-usersuffix" class="title_restorable">
+                                        <small>User Suffix</small>
+                                    </label>
+                                    <div class="flex-container">
+                                        <input
+                                        class="ExtBlocks-editor-context-builder-lastmessagesbyblock-usersuffix text_pole textarea_compact"
+                                        type="text" />
+                                    </div>
+                                    
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-charprefix" class="title_restorable">
+                                        <small>Char Prefix</small>
+                                    </label>
+                                    <div class="flex-container">
+                                        <input
+                                        class="ExtBlocks-editor-context-builder-lastmessagesbyblock-charprefix text_pole textarea_compact"
+                                        type="text" />
+                                    </div>
+                                    
+                                    <label for="ExtBlocks-editor-context-builder-lastmessagesbyblock-charsuffix" class="title_restorable">
+                                        <small>Char Suffix</small>
+                                    </label>
+                                    <div class="flex-container">
+                                        <input
+                                        class="ExtBlocks-editor-context-builder-lastmessagesbyblock-charsuffix text_pole textarea_compact"
                                         type="text" />
                                     </div>
                                 </div>

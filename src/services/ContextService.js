@@ -52,6 +52,8 @@ export const ContextService = {
             return substituteParams(context_item.text, { dynamicMacros: additionalMacro });
         } else if (context_item.type === ContextType.LAST_MESSAGES || context_item.type === ContextType.LAST_MESSAGES_KEYWORD) {
             return this.getLastMessagesContext(context_item, messageId);
+        } else if (context_item.type === ContextType.LAST_MESSAGES_BY_BLOCK) {
+            return this.getLastMessagesByBlockContext(context_item, messageId);
         } else if (context_item.type === ContextType.PREVIOUS_BLOCK) {
             return this.getPreviousBlockContext(context_item, messageId, allBlocks);
         }
@@ -103,6 +105,41 @@ export const ContextService = {
             return '';
         }
 
+        return this._formatMessageSlice(lastMessages, item, messages_count);
+    },
+
+    /**
+     * Gets context from the last occurrence of a specified block.
+     * Returns messages from the last message containing the block to the current message.
+     * If the block has never appeared, returns all visible messages.
+     */
+    getLastMessagesByBlockContext(item, messageId) {
+        const sliced_chat = chat.slice(0, messageId + 1);
+        const visibleChat = sliced_chat.filter(message => message.is_system !== true);
+
+        if (!item.block_name || item.block_name === '') {
+            return '';
+        }
+
+        const lastBlockIndex = visibleChat.findLastIndex(message => {
+            if (!message.extra?.extblocks) return false;
+            return getBlockFromMessage(message.extra.extblocks, item.block_name) !== '';
+        });
+
+        const messages_count = lastBlockIndex === -1
+            ? visibleChat.length           // block never appeared -> all messages
+            : visibleChat.length - lastBlockIndex;  // slice from block index to end
+
+        if (messages_count <= 0) return '';
+
+        const lastMessages = visibleChat.slice(-messages_count);
+        return this._formatMessageSlice(lastMessages, item, messages_count);
+    },
+
+    /**
+     * Formats an array of messages using prefix/suffix/separator from the context item.
+     */
+    _formatMessageSlice(messages, item, messages_count) {
         let separator;
         if (item.messages_separator === 'newline') {
             separator = '\n';
@@ -112,7 +149,7 @@ export const ContextService = {
             separator = '\n\n';
         }
 
-        const combinedLastMessages = lastMessages.map((message, index) => {
+        return messages.map((message, index) => {
             const is_user_message = message.is_user;
             let prefix = is_user_message ? item.user_prefix : item.char_prefix;
             prefix = substituteParams(prefix);
@@ -122,8 +159,6 @@ export const ContextService = {
             const depth = messages_count - index - 1;
             return `${prefix}${getRegexedString(message.mes.trim(), placement, {depth: depth, isPrompt: true})}${suffix}`;
         }).join(separator);
-
-        return combinedLastMessages;
     },
 
     /**

@@ -62,17 +62,20 @@ export const GeneratedPlugin = {
      * @param {Object[]} options.allBlocks - All enabled blocks.
      * @param {Object} [options.additionalMacro] - Additional macros for substitution.
      * @param {boolean} [options.is_separate] - Whether to create a separate message for the output.
+     * @param {boolean} [options.parallel] - Whether to generate non-background blocks in parallel.
+     * @param {boolean} [options.quiet] - Whether to suppress toast notifications.
+     * @param {boolean} [options.no_extra] - Whether to skip adding generated content to extra storage.
      * @returns {Promise<string[]>} List of generated block contents.
      */
     async execute(blocks, options = {}) {
-        const { messageId, allBlocks, additionalMacro = {}, is_separate = false, parallel = false } = options;
+        const { messageId, allBlocks, additionalMacro = {}, is_separate = false, parallel = false, quiet = false, no_extra = false } = options;
         const groupedBlocks = this.groupBlocksByContext(blocks);
         const blocksList = [];
 
         if (Object.keys(groupedBlocks).length === 0) return blocksList;
 
         const hasForegroundBlocks = Object.values(groupedBlocks).some(group => !(group[0].background ?? false));
-        if (hasForegroundBlocks) {
+        if (hasForegroundBlocks && !quiet) {
             toastr.info(`${defaultExtPrefix} Generating, please wait...`);
         }
 
@@ -81,7 +84,7 @@ export const GeneratedPlugin = {
             const blocksInGroup = groupedBlocks[context];
             const isBackground = blocksInGroup[0].background ?? false;
 
-            if (isBackground) {
+            if (isBackground && !quiet) {
                 toastr.info(`${defaultExtPrefix} Starting background generation for "${blocksInGroup.map(b => b.name).join(', ')}"...`);
             }
 
@@ -94,9 +97,9 @@ export const GeneratedPlugin = {
 
                 eventSource.emit(ExtTopic.BLOCKS_GENERATED, { blocks: generatedContent, messageId });
 
-                if (!is_separate) {
+                if (!is_separate && !no_extra) {
                     await BlockService.addBlocksToExtra(messageId, generatedContent);
-                } else {
+                } else if (is_separate) {
                     const message = {
                         name: 'System', is_user: false, is_system: true, mes: generatedContent, force_avatar: system_avatar,
                         extra: {
@@ -112,7 +115,7 @@ export const GeneratedPlugin = {
                     await saveChat();
                 }
 
-                if (isBackground) {
+                if (isBackground && !quiet) {
                     toastr.success(`${defaultExtPrefix} Background generation for "${blocksInGroup.map(b => b.name).join(', ')}" is done!`);
                 }
                 return generatedContent;
@@ -138,7 +141,7 @@ export const GeneratedPlugin = {
             blocksList.push(...results);
         }
 
-        if (hasForegroundBlocks) {
+        if (hasForegroundBlocks && !quiet) {
             toastr.success(`${defaultExtPrefix} Generating is done!`);
         }
         return blocksList;

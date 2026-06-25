@@ -177,6 +177,7 @@ In the edit window, you can set the following for a block:
 	- `Text`: Free text, supports Tavern macros.
 	- `Last messages`: Recent messages with optional prefixes/suffixes. A negative `Messages Count` includes the first messages instead.
 	- `Last messages by keyword`: Recent messages up to a specific keyword. Useful for keyword-triggered blocks.
+	- `Last messages by block`: Recent messages starting from the last message containing a specified block. If the block has never appeared, returns all messages up to the current one.
 	- `Previous block`: The content of the previous instance of this block.
 - **Context Order**: Displayed at the bottom right; items can be moved up/down or deleted. Context can be imported and exported. Blocks with the same context and trigger will be generated in a single API call (respecting their period).
 
@@ -279,12 +280,17 @@ In the edit window, you can set the following for a block:
   - `options`: An object containing:
     - `messageId`, `allBlocks`, `additionalMacro`: Same as above.
     - `is_separate` (optional, boolean, default: `false`): If `true`, blocks are placed in a new system message instead of the message with `messageId`.
+    - `parallel` (optional, boolean, default: `false`): If `true`, non-background blocks are generated in parallel.
+    - `quiet` (optional, boolean, default: `false`): If `true`, suppresses toast notifications during generation.
+    - `no_extra` (optional, boolean, default: `false`): If `true`, generated content is not saved to message extra storage.
 
-- `(async) GenerationService.handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro, is_separate, parallel)`: Handles the processing and generation of all blocks for a given message.
+- `(async) GenerationService.handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro, is_separate, parallel, quiet, no_extra)`: Handles the processing and generation of all blocks for a given message.
   - `isUser` (boolean): Whether the message is from the user.
   - `triggeredBlocks`: An array of blocks to be processed.
   - `messageId`, `allBlocks`, `additionalMacro`, `is_separate`: Same as above.
   - `parallel` (optional, boolean, default: `false`): If `true`, non-background blocks are generated in parallel.
+  - `quiet` (optional, boolean, default: `false`): If `true`, suppresses toast notifications during generation.
+  - `no_extra` (optional, boolean, default: `false`): If `true`, generated content is not saved to message extra storage.
 
 - `BlockService.injectBlock(block, blockConfig)`: Injects a block's state into the main context.
   - `block` (string): The block's state.

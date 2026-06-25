@@ -47,6 +47,7 @@ export const ContextType = {
     TEXT: 'text',
     LAST_MESSAGES: 'last_messages',
     LAST_MESSAGES_KEYWORD: 'last_messages_keyword',
+    LAST_MESSAGES_BY_BLOCK: 'last_messages_by_block',
     PREVIOUS_BLOCK: 'previous_block'
 };
 

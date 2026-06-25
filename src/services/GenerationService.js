@@ -26,7 +26,7 @@ export const GenerationService = {
     /**
      * Orchestrates the generation of blocks, including scripts and rewrites.
      */
-    async handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro = {}, is_separate = false, parallel = false) {
+    async handleBlocksGeneration(messageId, isUser, allBlocks, triggeredBlocks, additionalMacro = {}, is_separate = false, parallel = false, quiet = false, no_extra = false) {
         const { generatedBlocks, rewriteBlocks, scriptBlocks } = this.categorizeBlocks(triggeredBlocks);
         
         const scriptPlugin = PluginRegistry.get(BlockType.SCRIPT);
@@ -39,7 +39,7 @@ export const GenerationService = {
 
         let blocksList = [];
         if (generatedPlugin) {
-            blocksList = await generatedPlugin.execute(generatedBlocks, { messageId, allBlocks, additionalMacro, is_separate, parallel });
+            blocksList = await generatedPlugin.execute(generatedBlocks, { messageId, allBlocks, additionalMacro, is_separate, parallel, quiet, no_extra });
         }
 
         if (rewritePlugin) await rewritePlugin.execute(rewriteBlocks, { messageId, allBlocks, generation_order: 'after', additionalMacro });

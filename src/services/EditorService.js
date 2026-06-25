@@ -37,6 +37,13 @@ export const EditorService = {
             item.user_suffix = '';
             item.char_prefix = '';
             item.char_suffix = '';
+        } else if (type === ContextType.LAST_MESSAGES_BY_BLOCK) {
+            item.block_name = '';
+            item.messages_separator = 'double_newline';
+            item.user_prefix = '';
+            item.user_suffix = '';
+            item.char_prefix = '';
+            item.char_suffix = '';
         } else if (type === ContextType.PREVIOUS_BLOCK) {
             item.block_name = '';
             item.block_count = 1;

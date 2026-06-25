@@ -143,6 +143,7 @@ export const EditorService = {
             script_type: data.script_type || 'stscript',
             script: String(data.script || ''),
             generation_pause: !!data.generation_pause,
+            generation_after_commands: !!data.generation_after_commands,
             swipe: !!data.swipe,
             period: parseInt(data.period) || 2,
             keyword: String(data.keyword || ''),

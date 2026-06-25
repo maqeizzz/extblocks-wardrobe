@@ -66,6 +66,16 @@ export const EventController = {
                 if (messageId >= 0) BlockService.injectAllEnabledBlocks(messageId);
                 else BlockService.removeAllBlockInjects();
             }
+
+            const scriptBlocks = BlockService.getBlocksByType([BlockType.SCRIPT], true)
+                .filter(block => block.generation_after_commands);
+            if (scriptBlocks.length > 0) {
+                const plugin = PluginRegistry.get(BlockType.SCRIPT);
+                if (plugin) {
+                    const messageId = type === 'regenerate' ? chat.length - 2 : chat.length - 1;
+                    plugin.execute(scriptBlocks, { type, data, dryRun, messageId });
+                }
+            }
         });
 
         eventSource.makeFirst(event_types.USER_MESSAGE_RENDERED, async (messageId) => {

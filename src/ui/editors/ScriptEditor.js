@@ -56,6 +56,7 @@ export const ScriptEditor = {
                 editorHtml.find('input[name="user_message"]').prop('checked', block.user_message ?? false);
                 editorHtml.find('input[name="char_message"]').prop('checked', block.char_message ?? true);
                 editorHtml.find('input[name="generation_pause"]').prop('checked', block.generation_pause ?? false);
+                editorHtml.find('input[name="generation_after_commands"]').prop('checked', block.generation_after_commands ?? false);
                 editorHtml.find('input[name="swipe"]').prop('checked', block.swipe ?? false);
                 
                 const trigger_periodicity = (block.keyword && block.keyword !== '') ? "keyword" : "periodic";
@@ -201,6 +202,7 @@ export const ScriptEditor = {
                 user_message: editorHtml.find('input[name="user_message"]').prop('checked'),
                 char_message: editorHtml.find('input[name="char_message"]').prop('checked'),
                 generation_pause: editorHtml.find('input[name="generation_pause"]').prop('checked'),
+                generation_after_commands: editorHtml.find('input[name="generation_after_commands"]').prop('checked'),
                 swipe: editorHtml.find('input[name="swipe"]').prop('checked'),
                 period: editorHtml.find('input[name="period"]').val(),
                 keyword: trigger_periodicity === 'keyword' ? editorHtml.find('input[name="keyword"]').val() : '',

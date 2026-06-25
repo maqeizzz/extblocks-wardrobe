@@ -27,7 +27,8 @@ async function executeST(text) {
 
 /**
  * Executes a JavaScript script.
- * @param {string} text 
+ * @param {string} text
+ * @param {Object} [args={}]
  */
 async function executeJS(text, args = {}) {
     const { messageId, isUser, allBlocks, triggeredBlocks, additionalMacro, is_separate } = args;

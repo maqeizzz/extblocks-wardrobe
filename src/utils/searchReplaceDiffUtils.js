@@ -34,7 +34,29 @@ export function isSearchReplaceNoChanges(output) {
         .replace(/\r\n?/g, '\n')
         .split('\n')
         .filter(line => line.trim() !== '' && !isFenceLine(line));
-    return contentLines.length === 1 && contentLines[0].trim() === searchReplaceNoChanges;
+    if (contentLines.length !== 1) return false;
+
+    const response = contentLines[0].trim();
+    if (response === searchReplaceNoChanges) return true;
+
+    // Tolerate common whole-response phrases while keeping the check strict
+    // enough not to swallow an explanation or a malformed diff.
+    const normalized = response
+        .toLowerCase()
+        .replace(/[.!?]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return [
+        'no changes',
+        'no change needed',
+        'no changes needed',
+        'no changes are needed',
+        'no change required',
+        'no changes required',
+        'nothing to change',
+        'no rewrite needed',
+        'no rewrite required',
+    ].includes(normalized);
 }
 
 /**
@@ -203,8 +225,15 @@ export const searchReplaceDiffTemplate = [
     '>>>>>>> REPLACE',
 ].join('\n');
 
+export const searchReplaceDiffOutputTemplate = `Output exactly ${searchReplaceNoChanges}, or one or more SEARCH/REPLACE hunks as specified by the system instructions.`;
+
 export const searchReplaceDiffProtocol = [
-    'Return only one or more SEARCH/REPLACE hunks in this exact format:',
+    'Choose exactly one of these two output forms:',
+    '',
+    `1. If the rewrite instructions are already satisfied, not applicable, or require no actual edits, output exactly this single token and stop:`,
+    searchReplaceNoChanges,
+    '',
+    '2. Otherwise, output only one or more SEARCH/REPLACE hunks in this exact format:',
     searchReplaceDiffTemplate,
     '',
     'Rules:',
@@ -212,7 +241,7 @@ export const searchReplaceDiffProtocol = [
     '- Include enough unchanged context in SEARCH to make every match unique.',
     '- Use multiple hunks for separate changes.',
     '- To delete text, leave the REPLACE section empty.',
-    `- If the rewrite instructions are already satisfied or no changes are needed, return exactly ${searchReplaceNoChanges} and nothing else.`,
-    '- Never create a no-op hunk or a hunk containing the complete rewrite target just to indicate that no changes are needed.',
+    `- ${searchReplaceNoChanges} is a valid successful response. Do not replace it with prose such as "No changes needed."`,
+    '- Never create a no-op hunk or a hunk containing the complete rewrite target when no actual edits are needed.',
     '- Do not return explanations, XML wrappers, or the complete rewritten text.',
 ].join('\n');

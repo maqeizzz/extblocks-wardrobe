@@ -7,8 +7,8 @@ import {
     applySearchReplaceDiff,
     isSearchReplaceNoChanges,
     parseSearchReplaceDiff,
+    searchReplaceDiffOutputTemplate,
     searchReplaceDiffProtocol,
-    searchReplaceDiffTemplate,
 } from '../utils/searchReplaceDiffUtils.js';
 import { getRegexedString } from '../../../../../extensions/regex/engine.js';
 
@@ -31,7 +31,7 @@ export const RewritePlugin = {
         const rewriteMode = rewriteBlock.rewrite_mode ?? RewriteMode.FULL;
 
         const promptBlock = rewriteMode === RewriteMode.SEARCH_REPLACE
-            ? { ...rewriteBlock, template: searchReplaceDiffTemplate }
+            ? { ...rewriteBlock, template: searchReplaceDiffOutputTemplate }
             : rewriteBlock;
         let fullPrompt = BlockService.getSingleBlockFullPrompt(promptBlock, messageId, allBlocks, localMacro);
         if (rewriteMode === RewriteMode.SEARCH_REPLACE) {

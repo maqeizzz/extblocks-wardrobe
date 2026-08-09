@@ -1,4 +1,4 @@
-import { BlockType, MessageRole, ContextType } from '../core/constants.js';
+import { BlockType, MessageRole, ContextType, RewriteMode } from '../core/constants.js';
 
 const { uuidv4 } = SillyTavern.getContext();
 
@@ -72,8 +72,9 @@ export const EditorService = {
 
         switch (type) {
             case BlockType.GENERATED:
-            case BlockType.REWRITE:
                 return { ...base, ...this._getGeneratedFields(blockData) };
+            case BlockType.REWRITE:
+                return { ...base, ...this._getGeneratedFields(blockData), ...this._getRewriteFields(blockData) };
             case BlockType.ACCUMULATION:
                 return { ...base, ...this._getAccumulationFields(blockData) };
             case BlockType.SCRIPT:
@@ -118,6 +119,17 @@ export const EditorService = {
             apply_regex: !!data.apply_regex,
             context: Array.isArray(data.context) ? data.context : [],
             api_preset: data.api_preset || 'big'
+        };
+    },
+
+    /**
+     * Returns fields specific to Rewrite blocks.
+     */
+    _getRewriteFields(data) {
+        return {
+            rewrite_mode: Object.values(RewriteMode).includes(data.rewrite_mode)
+                ? data.rewrite_mode
+                : RewriteMode.FULL,
         };
     },
 

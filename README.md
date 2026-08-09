@@ -194,10 +194,36 @@ In the edit window, you can set the following for a block:
 	`Write the current time of day in the <current time> block.`
 
 ### Rewrite Blocks
-A subtype of generated blocks, but instead of being injected, they rewrite the main response. The editor has an additional `Generation Order` parameter to control whether the block rewrites the message before or after other blocks are generated.
-The template for rewrite blocks must contain a `<rewritten text>` block; the rest of the content is flexible. The block name can be anything, unlike regular generated blocks.
+A subtype of generated blocks, but instead of being injected, they rewrite the main response. The editor has additional parameters:
+- `Generation Order`: Controls whether the block rewrites the message before or after other blocks are generated.
+- `Rewrite Method`: Selects how the generated result is applied:
+  - `Full text` (default): The template must contain a `<rewritten text>` block. Its content replaces the complete rewrite target.
+  - `Search/Replace diff`: The model returns only exact changes instead of reproducing the complete target.
 
-Rewrite blocks support partial rewriting. You can select a specific part of the message in the editor and rewrite only that part. To do this:
+The block name can be anything, unlike regular generated blocks.
+
+Search/Replace mode uses one or more aider-style hunks:
+```
+  <<<<<<< SEARCH
+  Exact original fragment to find
+  =======
+  Replacement text
+  >>>>>>> REPLACE
+```
+
+The canonical output template is enforced automatically at generation time. The configured Block Template is preserved so that switching back to `Full text` does not destroy it.
+
+Rules for Search/Replace mode:
+- `SEARCH` must be non-empty and match the current rewrite target exactly once, including whitespace and punctuation.
+- Include enough unchanged context to make each `SEARCH` unique.
+- Hunks are applied sequentially but transactionally within one rewrite block. If any hunk is invalid, missing, or ambiguous, that block makes no changes.
+- Multiple hunks may be returned for separate changes.
+- An empty `REPLACE` section deletes the matched text.
+- Do not wrap the diff in XML or include explanations. A single outer Markdown code fence is tolerated.
+- There is no fuzzy matching or automatic fallback to full rewriting.
+- When `Apply Regexes` is enabled, regex transformations apply only to `REPLACE` sections. Unchanged text and `SEARCH` sections are not transformed.
+
+Rewrite blocks support partial rewriting. In Search/Replace mode, searches are restricted to the selected text. You can select a specific part of the message in the editor and rewrite only that part. To do this:
 1. Click the "Partial rewrite" button in the message editor (pen in square button).
 2. Select the text you want to rewrite in the editor.
 3. A floating popup will appear where you can select a rewrite block and provide an additional prompt.
@@ -254,7 +280,7 @@ In the edit window, you can set the following for a block:
   - `count` (optional, number, default: 1): The number of previous states to retrieve.
 
 ##### **Working with Blocks:**
-- `(async) RewritePlugin.generateRewrite(rewriteBlock, messageId, allBlocks, additionalMacro)`: Generates a rewrite block, returning a string.
+- `(async) RewritePlugin.generateRewrite(rewriteBlock, messageId, allBlocks, additionalMacro)`: Generates a rewrite block, returning the final rewritten target as a string. In Search/Replace mode, the returned diff is parsed and applied before this method returns.
   - `rewriteBlock`: The rewrite block object.
   - `messageId`: The message ID for which the block is generated.
   - `allBlocks`: An array of all relevant blocks.
@@ -265,6 +291,7 @@ In the edit window, you can set the following for a block:
   - `options`: An object containing:
     - `generation_order`: Filters blocks by whether they generate `'before'` or `'after'` the main blocks.
     - `messageId`, `allBlocks`, `additionalMacro`: Same as above.
+    - `rewriteTarget` (optional): Exact partial rewrite range in the form `{ start, end }`. When omitted, partial rewrites fall back to a unique exact match of `additionalMacro.textToRewrite`.
 
 - `(async) ScriptPlugin.execute(scriptBlocks, options)`: Executes script blocks.
   - `scriptBlocks`: An array of script blocks.

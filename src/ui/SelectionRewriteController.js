@@ -95,9 +95,9 @@ export const SelectionRewriteController = {
 
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const text = textarea.value.substring(start, end).trim();
+        const text = textarea.value.substring(start, end);
 
-        if (text && text.length > 0) {
+        if (text.length > 0) {
             this.selectedText = text;
             this.selectionStart = start;
             this.selectionEnd = end;
@@ -197,6 +197,10 @@ export const SelectionRewriteController = {
                 additionalMacro: {
                     textToRewrite: this.selectedText,
                     additionalPrompt: additionalPrompt
+                },
+                rewriteTarget: {
+                    start: this.selectionStart,
+                    end: this.selectionEnd
                 }
             });
 

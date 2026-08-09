@@ -4,11 +4,13 @@ import {
     ElementTemplate, 
     BlockType, 
     MessageRole, 
-    ContextType 
+    ContextType,
+    RewriteMode
 } from '../../core/constants.js';
 import { EditorService } from '../../services/EditorService.js';
 import { BlockService } from '../../services/BlockService.js';
 import { interactiveSortData } from '../../utils/uiUtils.js';
+import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 
 const { 
@@ -253,18 +255,44 @@ export const GeneratedEditor = {
             const injectBlockWrapper = editorHtml.find('#ExtBlocks-editor-inject-block-wrapper');
             const injectSettings = editorHtml.find('#ExtBlocks-editor-inject-settings');
             const generationOrderWrapper = editorHtml.find('#ExtBlocks-editor-generation-order-wrapper');
+            const rewriteModeWrapper = editorHtml.find('#ExtBlocks-editor-rewrite-mode-wrapper');
         
             if (blockType === BlockType.REWRITE) {
                 injectSettings.hide();
                 hideDisplayWrapper.hide();
                 injectBlockWrapper.hide();
                 generationOrderWrapper.show();
+                rewriteModeWrapper.show();
             } else {
                 injectSettings.show();
                 hideDisplayWrapper.show();
                 injectBlockWrapper.show();
                 generationOrderWrapper.hide();
+                rewriteModeWrapper.hide();
+                editorHtml.find('.ExtBlocks-editor-block-template')
+                    .prop('disabled', false)
+                    .attr('placeholder', 'Template for the block.')
+                    .attr('title', '');
             }
+        };
+
+        const handleRewriteModeChange = (rewriteMode) => {
+            const templateField = editorHtml.find('.ExtBlocks-editor-block-template');
+            const isSearchReplace = rewriteMode === RewriteMode.SEARCH_REPLACE;
+            templateField
+                .prop('disabled', isSearchReplace)
+                .attr(
+                    'placeholder',
+                    isSearchReplace
+                        ? `${searchReplaceDiffTemplate}\n\nThe Search/Replace output template is enforced automatically.`
+                        : 'Template for the block.',
+                )
+                .attr(
+                    'title',
+                    isSearchReplace
+                        ? 'The Search/Replace output template is enforced automatically. The saved full-text template is preserved.'
+                        : '',
+                );
         };
 
         const handleGenerationPauseChange = () => {
@@ -309,6 +337,7 @@ export const GeneratedEditor = {
                 editorHtml.find(`select[name="ExtBlocks-editor-injection-position"]`).val(block.injection_position ?? 0);
                 editorHtml.find('input[name="injection_depth"]').val(block.injection_depth ?? 4);
                 editorHtml.find(`select[name="ExtBlocks-editor-generation-order"]`).val(block.generation_order ?? 'before');
+                editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val(block.rewrite_mode ?? RewriteMode.FULL);
                 
                 changeTriggerPeriodicity(trigger_periodicity);
                 handleBlockTypeChange(block.block_type ?? BlockType.GENERATED);
@@ -317,6 +346,7 @@ export const GeneratedEditor = {
             editorHtml.find('input[name="disabled"]').prop('checked', false);
             editorHtml.find('input[name="char_message"]').prop('checked', true);
             editorHtml.find(`select[name="ExtBlocks-editor-trigger-periodicity"]`).val('periodic');
+            editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val(RewriteMode.FULL);
             changeTriggerPeriodicity('periodic');
         }
 
@@ -365,7 +395,16 @@ export const GeneratedEditor = {
         });
         editorHtml.find(`select[name="ExtBlocks-editor-context-item"]`).on('change', handleContextItemTypeChange);
         editorHtml.find(`select[name="ExtBlocks-editor-trigger-periodicity"]`).on('change', (e) => changeTriggerPeriodicity($(e.target).val()));
-        editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).on('change', (e) => handleBlockTypeChange($(e.target).val()));
+        editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).on('change', (e) => {
+            const blockType = $(e.target).val();
+            handleBlockTypeChange(blockType);
+            handleRewriteModeChange(
+                blockType === BlockType.REWRITE
+                    ? editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val()
+                    : RewriteMode.FULL,
+            );
+        });
+        editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).on('change', (e) => handleRewriteModeChange($(e.target).val()));
         editorHtml.find('input[name="generation_pause"]').on('change', handleGenerationPauseChange);
         
         editorHtml.find('#ExtBlocks-editor-context-import').on('click', () => editorHtml.find('#ExtBlocks-editor-context-importFile').trigger('click'));
@@ -385,6 +424,7 @@ export const GeneratedEditor = {
         });
 
         handleGenerationPauseChange();
+        handleRewriteModeChange(editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val());
         await loadContextItems();
         await interactiveSortData([{
             selector: editorHtml.find('#ExtBlocks-editor-context-list'),
@@ -417,6 +457,7 @@ export const GeneratedEditor = {
                 injection_position: editorHtml.find(`select[name="ExtBlocks-editor-injection-position"]`).val(),
                 injection_depth: editorHtml.find('input[name="injection_depth"]').val(),
                 generation_order: editorHtml.find(`select[name="ExtBlocks-editor-generation-order"]`).val(),
+                rewrite_mode: editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val(),
                 background: editorHtml.find('input[name="background"]').prop('checked'),
                 apply_regex: editorHtml.find('input[name="apply_regex"]').prop('checked'),
                 context: contextItems,

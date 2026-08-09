@@ -43,6 +43,11 @@ export const BlockType = {
     SCRIPT: 'script'
 };
 
+export const RewriteMode = {
+    FULL: 'full',
+    SEARCH_REPLACE: 'search_replace'
+};
+
 export const ContextType = {
     TEXT: 'text',
     LAST_MESSAGES: 'last_messages',

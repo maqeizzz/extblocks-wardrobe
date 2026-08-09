@@ -35,6 +35,7 @@ export const GeneratedEditor = {
         let editingContextItemId = null;
         let isResettingType = false;
         let blockApiPreset = 'big';
+        let fullTextTemplate = '';
 
         // --- Context Management ---
 
@@ -269,30 +270,31 @@ export const GeneratedEditor = {
                 injectBlockWrapper.show();
                 generationOrderWrapper.hide();
                 rewriteModeWrapper.hide();
-                editorHtml.find('.ExtBlocks-editor-block-template')
-                    .prop('disabled', false)
-                    .attr('placeholder', 'Template for the block.')
-                    .attr('title', '');
             }
         };
 
         const handleRewriteModeChange = (rewriteMode) => {
             const templateField = editorHtml.find('.ExtBlocks-editor-block-template');
             const isSearchReplace = rewriteMode === RewriteMode.SEARCH_REPLACE;
-            templateField
-                .prop('disabled', isSearchReplace)
-                .attr(
-                    'placeholder',
-                    isSearchReplace
-                        ? `${searchReplaceDiffTemplate}\n\nThe Search/Replace output template is enforced automatically.`
-                        : 'Template for the block.',
-                )
-                .attr(
-                    'title',
-                    isSearchReplace
-                        ? 'The Search/Replace output template is enforced automatically. The saved full-text template is preserved.'
-                        : '',
-                );
+
+            if (isSearchReplace) {
+                if (!templateField.prop('disabled')) {
+                    fullTextTemplate = String(templateField.val() ?? '');
+                }
+                templateField
+                    .val(searchReplaceDiffTemplate)
+                    .prop('disabled', true)
+                    .attr('placeholder', '')
+                    .attr('title', 'The Search/Replace output template is enforced automatically. The saved full-text template will be restored when switching back.');
+            } else {
+                if (templateField.prop('disabled')) {
+                    templateField.val(fullTextTemplate);
+                }
+                templateField
+                    .prop('disabled', false)
+                    .attr('placeholder', 'Template for the block.')
+                    .attr('title', '');
+            }
         };
 
         const handleGenerationPauseChange = () => {
@@ -313,10 +315,11 @@ export const GeneratedEditor = {
             if (block) {
                 contextItems = (block.context || []).slice();
                 blockApiPreset = block.api_preset || 'big';
+                fullTextTemplate = String(block.template ?? '');
                 
                 editorHtml.find('.ExtBlocks-editor-block-name').val(block.name);
                 editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).val(block.block_type ?? BlockType.GENERATED);
-                editorHtml.find('.ExtBlocks-editor-block-template').val(block.template ?? '');
+                editorHtml.find('.ExtBlocks-editor-block-template').val(fullTextTemplate);
                 editorHtml.find('.ExtBlocks-editor-block-prompt').val(block.prompt ?? '');
                 editorHtml.find('input[name="user_message"]').prop('checked', block.user_message ?? false);
                 editorHtml.find('input[name="char_message"]').prop('checked', block.char_message ?? true);
@@ -438,12 +441,17 @@ export const GeneratedEditor = {
         const popupResult = await callPopup(editorHtml, 'confirm', undefined, { okButton: 'Save', wide: true });
         if (popupResult) {
             const trigger_periodicity = editorHtml.find(`select[name="ExtBlocks-editor-trigger-periodicity"]`).val();
+            const blockType = editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).val();
+            const rewriteMode = editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val();
+            const template = blockType === BlockType.REWRITE && rewriteMode === RewriteMode.SEARCH_REPLACE
+                ? fullTextTemplate
+                : editorHtml.find('.ExtBlocks-editor-block-template').val();
             const blockData = {
                 id: existingId,
-                block_type: editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).val(),
+                block_type: blockType,
                 name: editorHtml.find('.ExtBlocks-editor-block-name').val(),
                 disabled: editorHtml.find('input[name="disabled"]').prop('checked'),
-                template: editorHtml.find('.ExtBlocks-editor-block-template').val(),
+                template: template,
                 prompt: editorHtml.find('.ExtBlocks-editor-block-prompt').val(),
                 user_message: editorHtml.find('input[name="user_message"]').prop('checked'),
                 char_message: editorHtml.find('input[name="char_message"]').prop('checked'),
@@ -457,7 +465,7 @@ export const GeneratedEditor = {
                 injection_position: editorHtml.find(`select[name="ExtBlocks-editor-injection-position"]`).val(),
                 injection_depth: editorHtml.find('input[name="injection_depth"]').val(),
                 generation_order: editorHtml.find(`select[name="ExtBlocks-editor-generation-order"]`).val(),
-                rewrite_mode: editorHtml.find(`select[name="ExtBlocks-editor-rewrite-mode"]`).val(),
+                rewrite_mode: rewriteMode,
                 background: editorHtml.find('input[name="background"]').prop('checked'),
                 apply_regex: editorHtml.find('input[name="apply_regex"]').prop('checked'),
                 context: contextItems,

@@ -1,6 +1,7 @@
 const SEARCH_MARKER = '<<<<<<< SEARCH';
 const SEPARATOR_MARKER = '=======';
 const REPLACE_MARKER = '>>>>>>> REPLACE';
+export const searchReplaceNoChanges = 'NO_CHANGES';
 
 /**
  * Error raised when a search/replace response cannot be parsed or applied safely.
@@ -21,6 +22,19 @@ function isFenceLine(line) {
 
 function markerEquals(line, marker) {
     return line.trim() === marker;
+}
+
+/**
+ * Checks whether the model explicitly decided that no rewrite is needed.
+ * A single outer Markdown fence is tolerated.
+ */
+export function isSearchReplaceNoChanges(output) {
+    if (typeof output !== 'string') return false;
+    const contentLines = output
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .filter(line => line.trim() !== '' && !isFenceLine(line));
+    return contentLines.length === 1 && contentLines[0].trim() === searchReplaceNoChanges;
 }
 
 /**
@@ -198,5 +212,7 @@ export const searchReplaceDiffProtocol = [
     '- Include enough unchanged context in SEARCH to make every match unique.',
     '- Use multiple hunks for separate changes.',
     '- To delete text, leave the REPLACE section empty.',
+    `- If the rewrite instructions are already satisfied or no changes are needed, return exactly ${searchReplaceNoChanges} and nothing else.`,
+    '- Never create a no-op hunk or a hunk containing the complete rewrite target just to indicate that no changes are needed.',
     '- Do not return explanations, XML wrappers, or the complete rewritten text.',
 ].join('\n');

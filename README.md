@@ -219,6 +219,7 @@ Rules for Search/Replace mode:
 - Hunks are applied sequentially but transactionally within one rewrite block. If any hunk is invalid, missing, or ambiguous, that block makes no changes.
 - Multiple hunks may be returned for separate changes.
 - An empty `REPLACE` section deletes the matched text.
+- If the instructions are already satisfied or no rewrite is needed, return exactly `NO_CHANGES`. Do not produce a no-op hunk or a full-response hunk.
 - Do not wrap the diff in XML or include explanations. A single outer Markdown code fence is tolerated.
 - There is no fuzzy matching or automatic fallback to full rewriting.
 - When `Apply Regexes` is enabled, regex transformations apply only to `REPLACE` sections. Unchanged text and `SEARCH` sections are not transformed.

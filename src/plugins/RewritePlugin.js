@@ -5,6 +5,7 @@ import { MacroService } from '../services/MacroService.js';
 import { getMultiBlockContentFromMessage } from '../utils/blockUtils.js';
 import {
     applySearchReplaceDiff,
+    isSearchReplaceNoChanges,
     parseSearchReplaceDiff,
     searchReplaceDiffProtocol,
     searchReplaceDiffTemplate,
@@ -21,7 +22,7 @@ export const RewritePlugin = {
 
     /**
      * Generates and interprets a rewrite response.
-     * @returns {Promise<{rewrittenText: string, mode: string, hunksApplied: number}>}
+     * @returns {Promise<{rewrittenText: string, mode: string, hunksApplied: number, noChanges?: boolean}>}
      */
     async generateRewriteResult(rewriteBlock, messageId, allBlocks, additionalMacro = {}, applyRegex = false) {
         const hasExplicitTarget = Object.prototype.hasOwnProperty.call(additionalMacro, 'textToRewrite');
@@ -47,6 +48,15 @@ export const RewritePlugin = {
         }
 
         if (rewriteMode === RewriteMode.SEARCH_REPLACE) {
+            if (isSearchReplaceNoChanges(responseText)) {
+                return {
+                    rewrittenText: sourceText,
+                    mode: rewriteMode,
+                    hunksApplied: 0,
+                    noChanges: true,
+                };
+            }
+
             let hunks = parseSearchReplaceDiff(responseText);
             if (applyRegex && rewriteBlock.apply_regex) {
                 hunks = hunks.map(hunk => ({

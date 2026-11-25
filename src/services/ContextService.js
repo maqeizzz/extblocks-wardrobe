@@ -50,7 +50,7 @@ export const ContextService = {
      */
     getContextItemContent(context_item, messageId, allBlocks, additionalMacro) {
         if (context_item.type === ContextType.CHARACTERS) {
-            const content = formatCharacterLibrary(context_item.library);
+            const content = formatCharacterLibrary(context_item.library, extStates.ExtBlocks_settings?.sharedWardrobe);
             return content ? substituteParams(content, { dynamicMacros: additionalMacro }) : '';
         }
         if (context_item.type === ContextType.TEXT) {

@@ -12,6 +12,8 @@ Each included character contributes one line in the form `Name: appearance tags,
 
 Open **ExtBlocks** from the wand menu next to the chat box, then switch between **Characters** and **Wardrobe**. Search by name and use the checkbox next to a character to include them in the prompt. Expand the character and select an outfit by its name and icon. Outfit selection, character inclusion and outfit ownership apply immediately. Use **Save details** for names and tags. The window edits existing context libraries and creates one automatically when you add the first entry to a block. If an entire block is switched off, use its **Enable block** button to resume generation. Enabling one character from a previously disabled library leaves the other characters off.
 
+**Add shared outfit** in Wardrobe adds an outfit to every character's choices. Use **Add personal outfit** inside a character's card to create and select an outfit only for that character. Existing library outfits retain their original scope. Shared outfits are saved in ExtBlocks settings and stay available when switching presets. Block and preset exports carry the selection reference, while the shared wardrobe itself remains in ExtBlocks settings.
+
 ### Updating a hosted instance
 
 ExtBlocks 1.1.0 sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.

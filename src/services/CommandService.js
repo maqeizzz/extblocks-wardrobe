@@ -104,14 +104,26 @@ export const CommandService = {
      */
     async runBlockRegenerationCallback() {
         const messageId = chat.length - 1;
-        if (messageId === 0) {
-            return;
-        }
-        const isUser = chat[messageId].is_user;
+        if (messageId <= 0) return;
+        const message = chat[messageId];
+        const swipe = message.swipe_id;
+        const previousBlocks = BlockService.getBlocksFromExtra(messageId);
 
         await BlockService.purgeBlocksExtra(messageId);
 
-        await GenerationService.handleMessageTrigger(messageId, isUser);
+        try {
+            await GenerationService.handleMessageTrigger(messageId, message.is_user);
+        } catch (error) {
+            if (previousBlocks && chat[messageId] === message && message.swipe_id === swipe
+                && !BlockService.getBlocksFromExtra(messageId)) {
+                try {
+                    await BlockService.addBlocksToExtra(messageId, previousBlocks);
+                } catch (restoreError) {
+                    console.error('[ExtBlocks] Could not restore previous generated blocks:', restoreError);
+                }
+            }
+            throw error;
+        }
         return '';
     },
 

@@ -224,10 +224,24 @@ export const ApiService = {
                 signal: controller.signal,
             });
             if (!response.ok) {
-                const hint = response.status === 401 || response.status === 403
-                    ? ' Check the API key and access permissions for this profile.'
-                    : '';
-                throw new Error(`Profile "${connection_profile.name}" returned HTTP ${response.status}.${hint}`);
+                let hint = '';
+                if (response.status === 401 || response.status === 403) {
+                    hint = ' Check the API key and access permissions for this profile.';
+                } else if ([502, 503, 504].includes(response.status)) {
+                    hint = ' The server or its upstream gateway could not complete the request.';
+                }
+                const requestId = response.headers.get('x-request-id') ?? response.headers.get('cf-ray');
+                const trace = /^[\w-]{1,100}$/.test(requestId ?? '') ? ` Request ID: ${requestId}.` : '';
+                console.warn('[ExtBlocks] Generation HTTP error', {
+                    status: response.status,
+                    source: cc_source,
+                    model: connection_profile.model,
+                    stream,
+                    messages: messages.length,
+                    promptCharacters: messages.reduce((total, message) => total + String(message.content ?? '').length, 0),
+                    requestId: trace ? requestId : undefined,
+                });
+                throw new Error(`Profile "${connection_profile.name}" returned HTTP ${response.status}.${hint}${trace}`);
             }
             let data;
 

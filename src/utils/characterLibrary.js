@@ -35,8 +35,18 @@ export function getAvailableOutfits(outfits, characterId) {
     return outfits.filter(outfit => !outfit.ownerId || outfit.ownerId === characterId);
 }
 
-export function formatCharacterLibrary(library) {
+export function getSharedOutfitChoices(sharedWardrobe) {
+    return readCharacterLibrary({ outfits: sharedWardrobe }).outfits.map(outfit => ({
+        ...outfit,
+        id: `shared:${outfit.id}`,
+        ownerId: '',
+        shared: true,
+    }));
+}
+
+export function formatCharacterLibrary(library, sharedWardrobe) {
     const { characters, outfits } = readCharacterLibrary(library);
+    outfits.push(...getSharedOutfitChoices(sharedWardrobe));
     return characters.filter(character => character.enabled).map(character => {
         const outfit = getAvailableOutfits(outfits, character.id).find(item => item.id === character.outfitId);
         const tags = [character.appearance, outfit?.tags].map(text => text?.trim()).filter(Boolean).join(', ');

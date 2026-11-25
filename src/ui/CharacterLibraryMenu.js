@@ -1,8 +1,9 @@
 import { BlockService } from '../services/BlockService.js';
 import { BlockType, ContextType, MessageRole } from '../core/constants.js';
 import { CharacterLibraryEditor } from './editors/CharacterLibraryEditor.js';
+import { getSharedOutfitChoices } from '../utils/characterLibrary.js';
 
-const { callGenericPopup, POPUP_TYPE, uuidv4 } = SillyTavern.getContext();
+const { callGenericPopup, POPUP_TYPE, uuidv4, extensionSettings, saveSettingsDebounced } = SillyTavern.getContext();
 let popupOpen = false;
 
 function action(label, icon, handler) {
@@ -42,9 +43,7 @@ export const CharacterLibraryMenu = {
 
             const popup = $('<div>', { class: 'ExtBlocks-quick-library' }).append($('<h3>').text('ExtBlocks'));
             let saving = false;
-            if (!libraries.length) {
-                popup.append($('<p>').text('Create or import a Generated or Rewrite block to use character prompts.'));
-            } else {
+            {
                 let mode = 'characters';
                 const panel = $('<div>', { class: 'ExtBlocks-character-library ExtBlocks-quick-list' });
                 const status = $('<div>', { role: 'status', class: 'ExtBlocks-quick-status' });
@@ -73,13 +72,18 @@ export const CharacterLibraryMenu = {
                         container.toggle(count > 0);
                         visibleCount += count;
                     }
-                    empty.text(query ? 'No matches.' : viewingCharacters ? 'No characters yet.' : 'No outfits yet.').toggle(!visibleCount);
+                    const message = viewingCharacters && !libraries.length
+                        ? 'Create or import a Generated or Rewrite block to use character prompts.'
+                        : viewingCharacters ? 'No characters yet.' : 'No outfits yet.';
+                    empty.text(query ? 'No matches.' : message).toggle(!visibleCount);
                 };
                 for (const [key, label, icon] of [['characters', 'Characters', 'fa-user'], ['wardrobe', 'Wardrobe', 'fa-shirt']]) {
                     tabs.append(action(label, icon, () => {
                         mode = key;
                         search.val('').attr('aria-label', `Search ${key}`).attr('placeholder', `Search ${key}`);
-                        addLabel.text(key === 'characters' ? 'Add character' : 'Add outfit');
+                        addLabel.text(key === 'characters' ? 'Add character' : 'Add shared outfit');
+                        add.prop('disabled', key === 'characters' && !libraries.length);
+                        destination.toggle(key === 'characters' && libraries.length > 1);
                         showList();
                     }).attr('data-mode', key));
                 }
@@ -90,7 +94,7 @@ export const CharacterLibraryMenu = {
                     destination.append(new Option(`${label} (${scoped ? 'Character card' : 'Preset'})`, String(index)));
                     const container = $('<section>', { class: 'ExtBlocks-quick-group' });
                     const caption = $('<div>', { class: 'ExtBlocks-quick-caption' });
-                    if (libraries.length > 1) caption.append($('<span>').text(label));
+                    caption.append($('<span>').text(label));
                     const body = $('<div>');
                     const disabledBlock = action('Enable block', 'fa-power-off', () => void save(editor.library, true));
                     caption.append(disabledBlock.toggle(Boolean(block.disabled)));
@@ -136,17 +140,35 @@ export const CharacterLibraryMenu = {
                         save,
                         itemDisabled: Boolean(item.disabled),
                         onRender: showList,
+                        sharedChoices: () => getSharedOutfitChoices(extensionSettings.ExtBlocks.sharedWardrobe),
                     });
                     editors.push({ editor, container });
                     panel.append(container.append(caption, body));
                     editor.load(item.library);
                 }
 
+                const sharedBody = $('<div>');
+                const sharedGroup = $('<section>', { class: 'ExtBlocks-quick-group' })
+                    .append($('<div>', { class: 'ExtBlocks-quick-caption' }).text('Shared outfits · all characters'), sharedBody);
+                const sharedEditor = new CharacterLibraryEditor(sharedBody, uuidv4, {
+                    sharedOnly: true,
+                    onRender: showList,
+                    save: ({ outfits }) => {
+                        extensionSettings.ExtBlocks.sharedWardrobe = structuredClone(outfits);
+                        saveSettingsDebounced();
+                        for (const { editor } of editors) editor.refreshOutfitChoices();
+                        status.text('Shared wardrobe updated');
+                    },
+                });
+                editors.push({ editor: sharedEditor, container: sharedGroup });
+                panel.prepend(sharedGroup);
+                sharedEditor.load({ outfits: extensionSettings.ExtBlocks.sharedWardrobe });
+
                 const add = action('Add character', 'fa-plus', () => {
                     search.val('');
-                    const { editor } = editors[Number(destination.val())];
+                    const editor = mode === 'wardrobe' ? sharedEditor : editors[Number(destination.val())].editor;
                     editor.addEntry(mode);
-                });
+                }).prop('disabled', !libraries.length);
                 const addLabel = add.children('span');
                 const toolbar = $('<div>', { class: 'ExtBlocks-quick-toolbar' }).append(search, destination.toggle(libraries.length > 1), add);
                 popup.append(tabs, toolbar, status, panel, empty);

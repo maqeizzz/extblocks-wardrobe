@@ -14,12 +14,14 @@ function textField(value, update, multiline = false) {
 }
 
 export class CharacterLibraryEditor {
-    constructor(container, createId, { save = null, itemDisabled = false, onRender = null } = {}) {
+    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [] } = {}) {
         this.container = container;
         this.createId = createId;
         this.save = save;
         this.itemDisabled = itemDisabled;
         this.onRender = onRender;
+        this.sharedOnly = sharedOnly;
+        this.sharedChoices = sharedChoices;
         this.drafts = new WeakMap();
     }
 
@@ -32,14 +34,15 @@ export class CharacterLibraryEditor {
         if (this.save) await this.save(this.library);
     }
 
-    addEntry(mode) {
+    addEntry(mode, character = null) {
         const id = this.createId();
         if (mode === 'characters') {
             this.library.characters.push({ id, name: '', appearance: '', outfitId: '', enabled: !this.save });
         } else {
-            this.library.outfits.push({ id, name: '', tags: '', ownerId: '' });
+            this.library.outfits.push({ id, name: '', tags: '', ownerId: character?.id ?? '' });
+            if (character) character.outfitId = id;
         }
-        this.render(id);
+        this.render(character?.id ?? id);
         void this.persist();
     }
 
@@ -84,6 +87,7 @@ export class CharacterLibraryEditor {
         const inlineOutfits = [];
         const outfitSummaries = new Map();
         const refreshChoices = () => {
+            const choices = [...outfits, ...this.sharedChoices()];
             for (const [outfit, summary] of outfitSummaries) {
                 summary.text(outfit.name || 'Unnamed outfit');
             }
@@ -91,7 +95,7 @@ export class CharacterLibraryEditor {
                 fillOwnerSelect(select, outfit);
             }
             for (const { select, character } of outfitSelects) {
-                const available = getAvailableOutfits(outfits, character.id);
+                const available = getAvailableOutfits(choices, character.id);
                 if (this.save) {
                     const selected = available.find(outfit => outfit.id === character.outfitId)?.id ?? '';
                     select.empty();
@@ -117,12 +121,17 @@ export class CharacterLibraryEditor {
                 if (select.val() === null) select.val('');
             }
             for (const entry of inlineOutfits) {
-                const outfit = getAvailableOutfits(outfits, entry.character.id).find(item => item.id === entry.character.outfitId);
-                if (entry.outfit === outfit) continue;
+                const outfit = getAvailableOutfits(choices, entry.character.id).find(item => item.id === entry.character.outfitId);
+                if (entry.outfit === outfit && !outfit?.shared) continue;
                 entry.outfit = outfit;
                 entry.owner = null;
                 entry.panel.empty();
-                if (outfit) {
+                if (outfit?.shared) {
+                    entry.panel.prop('open', true).append(
+                        $('<summary>').text('Shared outfit'),
+                        $('<p>').text(outfit.tags || 'Add clothing tags in Wardrobe.'),
+                    );
+                } else if (outfit) {
                     const owner = ownerSelect(outfit);
                     entry.owner = { select: owner, outfit };
                     entry.panel.prop('open', true).append($('<summary>').text('Edit selected outfit'), outfitFields(outfit, owner));
@@ -159,7 +168,7 @@ export class CharacterLibraryEditor {
                 refreshChoices();
                 this.onRender?.();
             }),
-            labeled('Available to', owner),
+            ...(this.sharedOnly ? [] : [labeled('Available to', owner)]),
         );
 
         const charactersSection = $('<div>', { class: 'ExtBlocks-characters-section' });
@@ -191,6 +200,7 @@ export class CharacterLibraryEditor {
             if (inline) inlineOutfits.push({ character, panel: inline });
             const card = $('<details>').prop('open', openId === character.id).append(
                 summary, details, this.save ? select : labeled('Outfit', select), ...(inline ? [inline] : [toggle]),
+                ...(this.save ? [button('Add personal outfit', () => this.addEntry('wardrobe', character))] : []),
                 button('Remove character', () => {
                     this.library.characters = characters.filter(item => item !== character);
                     this.library.outfits = outfits.filter(outfit => outfit.ownerId !== character.id);
@@ -227,6 +237,7 @@ export class CharacterLibraryEditor {
         if (!this.save) wardrobe.append(button('Add outfit', () => this.addEntry('wardrobe')));
 
         this.container.append(charactersSection, wardrobe);
+        this.refreshOutfitChoices = refreshChoices;
         refreshChoices();
         this.onRender?.();
     }

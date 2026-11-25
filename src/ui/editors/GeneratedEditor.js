@@ -13,6 +13,7 @@ import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
+import { getSharedOutfitChoices } from '../../utils/characterLibrary.js';
 
 const { 
     callPopup, 
@@ -38,7 +39,9 @@ export const GeneratedEditor = {
         let isResettingType = false;
         let blockApiPreset = 'big';
         let fullTextTemplate = '';
-        const characterLibrary = new CharacterLibraryEditor(editorHtml.find('.ExtBlocks-character-library'), uuidv4);
+        const characterLibrary = new CharacterLibraryEditor(editorHtml.find('.ExtBlocks-character-library'), uuidv4, {
+            sharedChoices: () => getSharedOutfitChoices(extensionSettings.ExtBlocks.sharedWardrobe),
+        });
 
         // --- Context Management ---
 

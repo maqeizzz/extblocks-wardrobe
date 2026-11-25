@@ -2,7 +2,7 @@ import { getRegexedString } from '../../../../../extensions/regex/engine.js'
 import { extStates } from '../core/state.js';
 import { ContextType, MessageRole } from '../core/constants.js';
 import { getBlockFromMessage } from '../utils/blockUtils.js';
-import { formatCharacterLibrary } from '../utils/characterLibrary.js';
+import { formatCharacterLibrary, getCatalogSharedChoices, readCharacterLibrary } from '../utils/characterLibrary.js';
 
 const { 
     substituteParams, 
@@ -42,6 +42,16 @@ export const ContextService = {
         });
 
         flushCurrent();
+        const globalContent = formatCharacterLibrary(extStates.ExtBlocks_settings?.characterCatalog);
+        const expanded = globalContent && substituteParams(globalContent, { dynamicMacros: additionalMacro });
+        if (expanded) {
+            const last = contextMessages.at(-1);
+            if (last?.role === MessageRole.USER) {
+                last.content += `\n${expanded}`;
+            } else {
+                contextMessages.push({ role: MessageRole.USER, content: expanded });
+            }
+        }
         return contextMessages;
     },
 
@@ -50,7 +60,12 @@ export const ContextService = {
      */
     getContextItemContent(context_item, messageId, allBlocks, additionalMacro) {
         if (context_item.type === ContextType.CHARACTERS) {
-            const content = formatCharacterLibrary(context_item.library, extStates.ExtBlocks_settings?.sharedWardrobe);
+            const settings = extStates.ExtBlocks_settings;
+            const library = readCharacterLibrary(context_item.library);
+            const imported = new Set(settings?.characterCatalog?.importedCharacters);
+            library.characters = library.characters.filter(character => !imported.has(character.id));
+            library.outfits.push(...getCatalogSharedChoices(settings));
+            const content = formatCharacterLibrary(library);
             return content ? substituteParams(content, { dynamicMacros: additionalMacro }) : '';
         }
         if (context_item.type === ContextType.TEXT) {

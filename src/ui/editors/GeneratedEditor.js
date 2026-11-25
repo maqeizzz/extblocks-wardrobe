@@ -13,7 +13,7 @@ import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
-import { getSharedOutfitChoices } from '../../utils/characterLibrary.js';
+import { getCatalogSharedChoices } from '../../utils/characterLibrary.js';
 
 const { 
     callPopup, 
@@ -40,7 +40,7 @@ export const GeneratedEditor = {
         let blockApiPreset = 'big';
         let fullTextTemplate = '';
         const characterLibrary = new CharacterLibraryEditor(editorHtml.find('.ExtBlocks-character-library'), uuidv4, {
-            sharedChoices: () => getSharedOutfitChoices(extensionSettings.ExtBlocks.sharedWardrobe),
+            sharedChoices: () => getCatalogSharedChoices(extensionSettings.ExtBlocks),
         });
 
         // --- Context Management ---
@@ -83,7 +83,7 @@ export const GeneratedEditor = {
         };
 
         const updateContextItemFieldsVisibility = (type) => {
-            characterLibrary.container.toggle(type === ContextType.CHARACTERS);
+            editorHtml.find('.ExtBlocks-context-builder-characters').toggle(type === ContextType.CHARACTERS);
             editorHtml.find('#ExtBlocks-editor-context-builder-keywordmessages, #ExtBlocks-editor-context-builder-messages, #ExtBlocks-editor-context-builder-block, #ExtBlocks-editor-context-builder-text, #ExtBlocks-editor-context-builder-lastmessagesbyblock').hide();
 
             if (type === ContextType.TEXT) editorHtml.find('#ExtBlocks-editor-context-builder-text').show();

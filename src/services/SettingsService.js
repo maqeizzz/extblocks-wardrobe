@@ -43,7 +43,7 @@ export const SettingsService = {
             if ('chat_completion_source' in preset || 'proxy_preset' in preset || 'model' in preset) {
                 const defaultProfile = extensionSettings.connectionManager.profiles[0];
                 if (defaultProfile) {
-                    preset.connection_profile = defaultProfile.name;
+                    preset.connection_profile = defaultProfile.id;
                     migration_done = true;
                 } else {
                     toastr.error(`[ExtBlocks] Could not migrate API preset "${presetName}". No Connection Profiles found.`);
@@ -56,6 +56,8 @@ export const SettingsService = {
             preset.top_p = preset.top_p ?? defaultApiPreset.top_p;
             preset.max_tokens = preset.max_tokens ?? defaultApiPreset.max_tokens;
             preset.reasoning_effort = preset.reasoning_effort ?? defaultApiPreset.reasoning_effort;
+            const profile = ApiService.getConnectionProfile(preset);
+            if (profile && preset.connection_profile) preset.connection_profile = profile.id;
         }
 
         if (migration_done) {
@@ -82,11 +84,8 @@ export const SettingsService = {
         extStates.ExtBlocks_settings = extensionSettings.ExtBlocks;
         extStates.current_set = extStates.ExtBlocks_settings.sets[extStates.ExtBlocks_settings.active_set_idx];
         extStates.api_preset = extStates.ExtBlocks_settings.api_presets[extStates.ExtBlocks_settings.active_api_preset];
-        extStates.connection_profile = extensionSettings.connectionManager.profiles.find(p => p.name === extStates.api_preset.connection_profile) ?? extensionSettings.connectionManager.profiles[0];
-
-        if (!extStates.connection_profile) {
+        if (!extensionSettings.connectionManager.profiles.length) {
             this.createDefaultConnectionProfile();
-            extStates.connection_profile = extensionSettings.connectionManager.profiles[0];
             saveSettingsDebounced();
         }
     },

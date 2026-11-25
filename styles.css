@@ -475,3 +475,22 @@ input.disable_ExtBlocks {
     background: var(--black30a);
     border-radius: 3px;
 }
+.ExtBlocks-character-library details {
+    margin-block: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 0.35rem;
+}
+
+.ExtBlocks-character-library summary {
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.ExtBlocks-character-library label:not(.checkbox_label) {
+    display: block;
+}
+
+.ExtBlocks-character-library textarea {
+    min-height: 4em;
+}

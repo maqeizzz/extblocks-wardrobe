@@ -40,8 +40,7 @@ export const RewritePlugin = {
         fullPrompt = await MacroService.checkAllMacros(fullPrompt);
 
         const blocksData = await ApiService.generateBlocks(fullPrompt, rewriteBlock.api_preset);
-        const preset = ApiService.getApiPreset(rewriteBlock.api_preset);
-        const responseText = ApiService.extractMessageFromData(blocksData, preset);
+        const responseText = ApiService.extractMessageFromData(blocksData);
 
         if (!responseText || responseText.includes('Proxy error')) {
             throw new Error('The API returned an empty or invalid rewrite response.');

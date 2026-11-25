@@ -33,7 +33,8 @@ export const defaultExtPrefix = '[ExtBlocks]';
 export const worldInfoMacrosNames = ['{{wiBefore}}', '{{wiAfter}}', '{{wiExamples}}', '{{wiDepth}}', '{{wiAll}}'];
 export const mainPromptMacros = '{{mainPrompt}}';
 
-export const path = 'third-party/extblocks';
+const extensionDirectory = new URL('../../', import.meta.url);
+export const path = 'third-party/' + extensionDirectory.pathname.split('/').at(-2);
 export const templates_path = path + '/templates';
 
 export const BlockType = {
@@ -49,6 +50,7 @@ export const RewriteMode = {
 };
 
 export const ContextType = {
+    CHARACTERS: 'characters',
     TEXT: 'text',
     LAST_MESSAGES: 'last_messages',
     LAST_MESSAGES_KEYWORD: 'last_messages_keyword',

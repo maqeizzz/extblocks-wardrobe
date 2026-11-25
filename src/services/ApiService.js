@@ -1,11 +1,13 @@
 import { proxies, chat_completion_sources, oai_settings } from '../../../../../openai.js';
 import { getEventSourceStream } from '../../../../../sse-stream.js';
+import { getPresetManager } from '../../../../../preset-manager.js';
 
 import { extStates } from '../core/state.js';
 import { MessageRole, defaultExtPrefix } from '../core/constants.js';
 import { SettingsService } from './SettingsService.js';
 
 const { getRequestHeaders, extensionSettings } = SillyTavern.getContext();
+const activeRequests = new Set();
 
 export const ApiService = {
     /**
@@ -14,8 +16,7 @@ export const ApiService = {
     async loadApiPreset() {
         await SettingsService.refreshSettings();
         const preset = extStates.api_preset;
-        const connection_profile = extStates.connection_profile;
-        $(`#ExtBlocks-proxy-connection-profile`).val(connection_profile.name);
+        this.refreshConnectionProfiles();
         $('#ExtBlocks-proxy-temperature').val(preset.temperature);
         $('#ExtBlocks-proxy-topp').val(preset.top_p);
         $('#ExtBlocks-proxy-maxtokens').val(preset.max_tokens);
@@ -28,29 +29,20 @@ export const ApiService = {
      * Refreshes the connection profiles list in the UI.
      */
     refreshConnectionProfiles() {
-        const connection_profile_names = extensionSettings.connectionManager.profiles.map(obj => obj.name);
         const select = $('#ExtBlocks-proxy-connection-profile');
         select.empty();
-        connection_profile_names.forEach(function(option) {
-            select.append($('<option>', {
-                value: option,
-                text: option
-            }));
-        });
-        select.val(extStates.api_preset.connection_profile);
+        select.append(new Option('Select a connection profile', ''));
+        for (const profile of extensionSettings.connectionManager.profiles) {
+            if (profile.mode === 'cc') select.append(new Option(profile.name, profile.id));
+        }
+        const profile = this.getConnectionProfile(extStates.api_preset);
+        select.val(profile?.mode === 'cc' ? profile.id : '');
     },
 
     /**
      * Initializes the API settings.
      */
     async loadAPI() {
-        this.refreshConnectionProfiles();
-        const connection_profile_names = extensionSettings.connectionManager.profiles.map(obj => obj.name);
-
-        if (!connection_profile_names.find(p => p === extStates.api_preset.connection_profile)) {
-            extStates.api_preset.connection_profile = connection_profile_names[0];
-        }
-        
         $('#ExtBlocks-api-preset').val(extStates.ExtBlocks_settings.active_api_preset);
         await this.loadApiPreset();
     },
@@ -68,11 +60,12 @@ export const ApiService = {
     /**
      * Gets a connection profile for a given preset.
      */
-    getConnectionProfile(apiPreset) {
-        if (!apiPreset) return extStates.connection_profile;
-        const connection_profile = extensionSettings.connectionManager.profiles.find(p => p.name === apiPreset.connection_profile);
-        if (connection_profile) return connection_profile;
-        else return extensionSettings.connectionManager.profiles[0];
+    getConnectionProfile(apiPreset = extStates.api_preset) {
+        const { profiles } = extensionSettings.connectionManager;
+        const reference = apiPreset?.connection_profile;
+        if (reference == null) return profiles.find(profile => profile.mode === 'cc');
+        return profiles.find(profile => profile.id === reference)
+            ?? profiles.find(profile => profile.name === reference);
     },
 
     /**
@@ -111,7 +104,7 @@ export const ApiService = {
         } else if (cc_source === chat_completion_sources.MAKERSUITE) {
             return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         } else {
-            return data.choices[0]?.delta?.content ?? data.choices[0]?.message?.content ?? data.choices[0]?.text ?? '';
+            return data?.choices?.[0]?.delta?.content ?? data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? '';
         }
     },
 
@@ -123,6 +116,7 @@ export const ApiService = {
         let generate_data = {
             'messages': messages,
             'model': connection_profile.model,
+            'secret_id': connection_profile['secret-id'],
             'temperature': preset.temperature,
             'stream': stream,
             'chat_completion_source': cc_source,
@@ -152,7 +146,12 @@ export const ApiService = {
         }
 
         // Connection settings
-        const settings = oai_settings;
+        const profilePreset = connection_profile.preset
+            ? getPresetManager('openai')?.getCompletionPresetByName(connection_profile.preset)
+            : undefined;
+        const isActiveProfile = extensionSettings.connectionManager.selectedProfile === connection_profile.id
+            && oai_settings.chat_completion_source === cc_source;
+        const settings = { ...(isActiveProfile ? oai_settings : {}), ...profilePreset };
         const api_url = connection_profile['api-url'];
         if (connection_profile.proxy) {
             const proxy_preset = proxies.find(p => p.name === connection_profile.proxy);
@@ -162,11 +161,13 @@ export const ApiService = {
             }
         } 
         if (cc_source === chat_completion_sources.CUSTOM) {
-            if (!settings.custom_url && !api_url) {
+            const customUrl = api_url?.trim() || settings.custom_url?.trim();
+            if (!customUrl) {
                 toastr.error('[ExtBlocks] No URL has been specified for the selected connection profile.');
                 throw new Error('No URL has been specified for the selected connection profile.');
             }
-            generate_data["custom_url"] = api_url ?? settings.custom_url;
+            generate_data["custom_url"] = customUrl.replace(/\/+$/, '');
+            generate_data["custom_prompt_post_processing"] = post_processing ?? settings.custom_prompt_post_processing;
             settings.custom_include_body !== undefined && (generate_data["custom_include_body"] = settings.custom_include_body);
             settings.custom_exclude_body !== undefined && (generate_data["custom_exclude_body"] = settings.custom_exclude_body);
             settings.custom_include_headers !== undefined && (generate_data["custom_include_headers"] = settings.custom_include_headers);
@@ -213,23 +214,26 @@ export const ApiService = {
         const generate_data = this.prepareGenerateData(preset, connection_profile, cc_source, messages);
         const stream = generate_data.stream;
 
-        extStates.abortController = new AbortController();
-        const generate_url = '/api/backends/chat-completions/generate';
-        const response = await fetch(generate_url, {
-            method: 'POST',
-            body: JSON.stringify(generate_data),
-            headers: getRequestHeaders(),
-            signal: extStates.abortController.signal,
-        });
-        extStates.abortController = null;
-
-        if (response.ok) {
+        const controller = new AbortController();
+        activeRequests.add(controller);
+        try {
+            const response = await fetch('/api/backends/chat-completions/generate', {
+                method: 'POST',
+                body: JSON.stringify(generate_data),
+                headers: getRequestHeaders(),
+                signal: controller.signal,
+            });
+            if (!response.ok) {
+                const hint = response.status === 401 || response.status === 403
+                    ? ' Check the API key and access permissions for this profile.'
+                    : '';
+                throw new Error(`Profile "${connection_profile.name}" returned HTTP ${response.status}.${hint}`);
+            }
             let data;
 
             if (stream) {
                 const eventStream = getEventSourceStream();
-                response.body.pipeThrough(eventStream);
-                const reader = eventStream.readable.getReader();
+                const reader = response.body.pipeThrough(eventStream).getReader();
                 let text = '';
                 const swipes = [];
                 while (true) {
@@ -238,6 +242,7 @@ export const ApiService = {
                     const rawData = value.data;
                     if (rawData === '[DONE]') break;
                     const parsed = JSON.parse(rawData);
+                    if (parsed.error) throw new Error(`Profile "${connection_profile.name}" returned an API error.`);
 
                     if (Array.isArray(parsed?.choices) && parsed?.choices?.[0]?.index > 0) {
                         const swipeIndex = parsed.choices[0].index - 1;
@@ -251,24 +256,27 @@ export const ApiService = {
                 data = await response.json();
 
                 if (data.error) {
-                    toastr.error(data.error.message || response.statusText, 'API returned an error');
-                    throw new Error(data);
+                    throw new Error(`Profile "${connection_profile.name}" returned an API error.`);
                 }
             }
 
             return data;
-        } else {
-            throw new Error(`Got response status ${response.status}`);
+        } catch (error) {
+            if (!controller.signal.aborted) {
+                toastr.error(error.message, 'ExtBlocks generation failed', { escapeHtml: true });
+            }
+            throw error;
+        } finally {
+            controller.abort();
+            activeRequests.delete(controller);
         }
     },
 
     /**
      * Extracts the message content from the API response.
      */
-    extractMessageFromData(data, preset) {
-        const connection_profile = this.getConnectionProfile(preset);
-        const cc_source = this.getChatCompletionSource(connection_profile.api);
-        if (preset.stream) {
+    extractMessageFromData(data) {
+        if (typeof data.content === 'string') {
             return data.content.trim();
         } else {
             return data.content?.filter(p => p.type === 'text')?.map(p => p.text)?.join('\n\n') ?? data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? data?.text ?? data?.message?.content?.[0]?.text ?? data?.message?.tool_plan ?? '';
@@ -279,9 +287,8 @@ export const ApiService = {
      * Aborts the current generation.
      */
     abortGeneration() {
-        if (extStates.abortController) {
-            extStates.abortController.abort();
-            extStates.abortController = null;
+        if (activeRequests.size) {
+            for (const controller of activeRequests) controller.abort();
             toastr.info(`${defaultExtPrefix} Generation aborted.`);
         }
     }

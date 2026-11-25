@@ -2,6 +2,20 @@
 
   For SillyTavern 1.15.0+
 
+### Characters & wardrobe
+
+In a Generated or Rewrite block, open **Context Builder → Add Item** and select **Characters & wardrobe**. Name the context item, then use **Add character** to create entries. Click a character's name to edit their appearance tags, select an outfit or exclude them from the current prompt.
+
+Use **Add outfit** under **Wardrobe** to enter clothing tags. Set **Available to** to **Shared** or select a character for a personal outfit. The same shared outfit can be selected by multiple characters. Save the context item, then save the block.
+
+Each included character contributes one line in the form `Name: appearance tags, outfit tags`. The item follows the same ordering, message role and macro substitution as text items. Its library is stored with the item and travels with context, block and preset JSON exports. Existing text items can still be edited normally. Move character tags out of the old items if you want each set of tags to appear just once.
+
+### Updating a hosted instance
+
+ExtBlocks 1.1.0 sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.
+
+Back up your ExtBlocks presets and replace the extension on the instance with this version. If your hosting panel installs extensions only from Git URLs, use a repository containing this version and replace the original installation. Run a single copy of ExtBlocks, since copies share settings and event handlers.
+
 	This extension allows for the external generation of content blocks.
 
 - **Repository**: `https://gitgud.io/Monblant/extblocks`

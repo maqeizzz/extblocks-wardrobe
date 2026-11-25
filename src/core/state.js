@@ -2,7 +2,6 @@ export const extStates = {
     ExtBlocks_settings: undefined,
     current_set: undefined,
     api_preset: undefined,
-    connection_profile: undefined,
     spoilerRegex: undefined,
     self_reload_flag: false,
     is_chat_modified: false,
@@ -10,5 +9,4 @@ export const extStates = {
     cachedPauseBlocks: null,
     triggeredPauseBlock: null,
     pauseCounter: 0,
-    abortController: null,
 };

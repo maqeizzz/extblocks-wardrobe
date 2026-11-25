@@ -12,6 +12,7 @@ import { BlockService } from '../../services/BlockService.js';
 import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
+import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
 
 const { 
     callPopup, 
@@ -29,6 +30,7 @@ export const GeneratedEditor = {
      */
     async open(existingId, isScoped) {
         const editorHtml = $(await renderExtensionTemplateAsync(templates_path, ElementTemplate.GENERATED_EDITOR));
+        const contextItemTemplate = $(await renderExtensionTemplateAsync(templates_path, ElementTemplate.CONTEXT_ITEM));
         const array = (isScoped ? characters[SillyTavern.getContext().characterId]?.data?.extensions?.ExtBlocks : extensionSettings.ExtBlocks.sets[extensionSettings.ExtBlocks.active_set_idx].global_blocks) ?? [];
         
         let contextItems = [];
@@ -36,13 +38,12 @@ export const GeneratedEditor = {
         let isResettingType = false;
         let blockApiPreset = 'big';
         let fullTextTemplate = '';
+        const characterLibrary = new CharacterLibraryEditor(editorHtml.find('.ExtBlocks-character-library'), uuidv4);
 
         // --- Context Management ---
 
         const loadContextItems = async () => {
             editorHtml.find('#ExtBlocks-editor-context-list').empty();
-            const contextItemTemplate = $(await renderExtensionTemplateAsync(templates_path, ElementTemplate.CONTEXT_ITEM));
-
             contextItems.forEach((context_item, index) => {
                 const contextItemHtml = contextItemTemplate.clone();
                 if (!context_item.id) context_item.id = uuidv4();
@@ -69,6 +70,7 @@ export const GeneratedEditor = {
                 });
 
                 contextItemHtml.find('.delete_context_item').on('click', async () => {
+                    if (editingContextItemId === context_item.id) exitEditMode();
                     contextItems.splice(index, 1);
                     await loadContextItems();
                 });
@@ -78,6 +80,7 @@ export const GeneratedEditor = {
         };
 
         const updateContextItemFieldsVisibility = (type) => {
+            characterLibrary.container.toggle(type === ContextType.CHARACTERS);
             editorHtml.find('#ExtBlocks-editor-context-builder-keywordmessages, #ExtBlocks-editor-context-builder-messages, #ExtBlocks-editor-context-builder-block, #ExtBlocks-editor-context-builder-text, #ExtBlocks-editor-context-builder-lastmessagesbyblock').hide();
 
             if (type === ContextType.TEXT) editorHtml.find('#ExtBlocks-editor-context-builder-text').show();
@@ -88,6 +91,7 @@ export const GeneratedEditor = {
         };
 
         const loadContextItemForEditing = (context_item) => {
+            characterLibrary.load(context_item.library);
             editorHtml.find('.ExtBlocks-editor-context-builder-name').val(context_item.name);
             editorHtml.find('select[name="ExtBlocks-editor-context-builder-role"]').val(context_item.role ?? MessageRole.USER);
 
@@ -130,6 +134,7 @@ export const GeneratedEditor = {
         };
 
         const exitEditMode = (context_type = 'text') => {
+            characterLibrary.load();
             editingContextItemId = null;
             editorHtml.find('.ExtBlocks-editor-context-builder-name').val('');
             editorHtml.find('select[name="ExtBlocks-editor-context-builder-role"]').val(MessageRole.USER);
@@ -207,7 +212,9 @@ export const GeneratedEditor = {
 
             const item = { id, name, role, type, disabled };
 
-            if (type === ContextType.TEXT) {
+            if (type === ContextType.CHARACTERS) {
+                item.library = characterLibrary.library;
+            } else if (type === ContextType.TEXT) {
                 item.text = String(editorHtml.find('.ExtBlocks-editor-context-builder-text-content').val());
             } else if (type === ContextType.LAST_MESSAGES) {
                 item.messages_count = parseInt(String(editorHtml.find('input[name="ExtBlocks-editor-context-builder-messages-count"]').val())) || 10;
@@ -313,7 +320,7 @@ export const GeneratedEditor = {
         if (existingId) {
             const block = array.find((b) => b.id === existingId);
             if (block) {
-                contextItems = (block.context || []).slice();
+                contextItems = structuredClone(block.context || []);
                 blockApiPreset = block.api_preset || 'big';
                 fullTextTemplate = String(block.template ?? '');
                 
@@ -415,7 +422,12 @@ export const GeneratedEditor = {
             for (const file of this.files) {
                 try {
                     const fileText = await getFileText(file);
-                    contextItems = JSON.parse(fileText).items || [];
+                    const items = JSON.parse(fileText).items;
+                    if (!Array.isArray(items) || items.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
+                        throw new Error('Invalid context items');
+                    }
+                    exitEditMode();
+                    contextItems = items;
                     await loadContextItems();
                 } catch (e) { toastr.error('Invalid JSON file.'); }
             }

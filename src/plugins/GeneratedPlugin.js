@@ -1,6 +1,5 @@
 import { system_avatar, system_message_types } from '../../../../../../script.js';
 import { BlockType, defaultExtPrefix, ExtTopic } from '../core/constants.js';
-import { extStates } from '../core/state.js';
 import { ApiService } from '../services/ApiService.js';
 import { BlockService } from '../services/BlockService.js';
 import { MacroService } from '../services/MacroService.js';
@@ -18,11 +17,11 @@ export const GeneratedPlugin = {
      * Groups blocks by their context.
      */
     groupBlocksByContext(blocks) {
-        const contextToString = (block) => `${block.background ? 'bg_' : ''}${block.context.map(item => item.name).join('_')}`;
-        const groupedBlocks = {};
+        const groupedBlocks = Object.create(null);
 
         blocks.forEach(block => {
-            const contextStr = contextToString(block);
+            const context = (block.context ?? []).filter(item => !item.disabled).map(({ id, name, disabled, ...fields }) => fields);
+            const contextStr = JSON.stringify([Boolean(block.background), block.api_preset || '', Boolean(block.apply_regex), context]);
             if (!groupedBlocks[contextStr]) {
                 groupedBlocks[contextStr] = [];
             }
@@ -42,8 +41,7 @@ export const GeneratedPlugin = {
         combinedContext = await MacroService.checkAllMacros(combinedContext);
 
         const blocksData = await ApiService.generateBlocks(combinedContext, apiPresetName);
-        const preset = apiPresetName ? extStates.ExtBlocks_settings.api_presets[apiPresetName] : extStates.api_preset;
-        let blocks = ApiService.extractMessageFromData(blocksData, preset);
+        const blocks = ApiService.extractMessageFromData(blocksData);
 
         function removeBackticks(codeString) {
             if (codeString.startsWith("```") && codeString.endsWith("```")) {

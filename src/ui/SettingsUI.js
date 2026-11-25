@@ -126,7 +126,7 @@ export const SettingsUI = {
             saveSettingsDebounced();
         });
 
-        $('#ExtBlocks-proxy-connection-profile').off('click').on('change', function () {
+        $('#ExtBlocks-proxy-connection-profile').off('change').on('change', function () {
             const value = $('#ExtBlocks-proxy-connection-profile').val();
             extStates.api_preset.connection_profile = value;
             saveSettingsDebounced();

@@ -2,6 +2,7 @@ import { getRegexedString } from '../../../../../extensions/regex/engine.js'
 import { extStates } from '../core/state.js';
 import { ContextType, MessageRole } from '../core/constants.js';
 import { getBlockFromMessage } from '../utils/blockUtils.js';
+import { formatCharacterLibrary } from '../utils/characterLibrary.js';
 
 const { 
     substituteParams, 
@@ -48,6 +49,10 @@ export const ContextService = {
      * Gets the content for a single context item.
      */
     getContextItemContent(context_item, messageId, allBlocks, additionalMacro) {
+        if (context_item.type === ContextType.CHARACTERS) {
+            const content = formatCharacterLibrary(context_item.library);
+            return content ? substituteParams(content, { dynamicMacros: additionalMacro }) : '';
+        }
         if (context_item.type === ContextType.TEXT) {
             return substituteParams(context_item.text, { dynamicMacros: additionalMacro });
         } else if (context_item.type === ContextType.LAST_MESSAGES || context_item.type === ContextType.LAST_MESSAGES_KEYWORD) {

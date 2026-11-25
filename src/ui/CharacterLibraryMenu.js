@@ -1,6 +1,6 @@
 import { BlockService } from '../services/BlockService.js';
 import { CharacterLibraryEditor } from './editors/CharacterLibraryEditor.js';
-import { collectSharedOutfitChoices, readCharacterLibrary, splitCharacterContext } from '../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, isContextItemDisabled, readCharacterLibrary, setContextItemDisabled, splitCharacterContext } from '../utils/characterLibrary.js';
 import { BlockType, ContextType, MessageRole } from '../core/constants.js';
 import { SettingsService } from '../services/SettingsService.js';
 
@@ -142,11 +142,10 @@ export const CharacterLibraryMenu = {
                         if (attached && !context.includes(item)) throw new Error('Library is no longer available');
                         if (!attached) block.context = [...context, item];
                         item.library = structuredClone(library);
-                        if (item.singleCharacter && item.library.characters.length === 1) {
+                        if (item.library.characters.length === 1) {
                             const [character] = item.library.characters;
-                            item.name = character.name.trim() || 'Unnamed character';
-                            item.disabled = editor.itemDisabled || !character.enabled;
-                            character.enabled = true;
+                            if (item.singleCharacter) item.name = character.name.trim() || 'Unnamed character';
+                            setContextItemDisabled(item, editor.itemDisabled || !character.enabled);
                         } else if (wasDisabled && !editor.itemDisabled) {
                             item.disabled = false;
                         }
@@ -156,7 +155,7 @@ export const CharacterLibraryMenu = {
                         if (set) saveSettingsDebounced();
                         else await BlockService.saveBlock(block, true);
                         attached = true;
-                        if (item.singleCharacter) editor.itemDisabled = Boolean(item.disabled);
+                        if (item.library.characters.length === 1) editor.itemDisabled = isContextItemDisabled(item);
                         if (split) {
                             editor.load(item.library);
                             const editors = cached.get(target);
@@ -173,7 +172,7 @@ export const CharacterLibraryMenu = {
                         item.library = priorLibrary;
                         item.name = priorName;
                         item.disabled = wasDisabled;
-                        editor.itemDisabled = Boolean(wasDisabled);
+                        editor.itemDisabled = isContextItemDisabled(item);
                         editor.load(priorLibrary);
                         status.text('Could not save. Reopen ExtBlocks and try again.');
                         console.error('[ExtBlocks] Could not save library:', error);
@@ -183,7 +182,7 @@ export const CharacterLibraryMenu = {
                     }
                 };
                 const editor = new CharacterLibraryEditor($('<div>'), uuidv4, {
-                    itemDisabled: Boolean(item.disabled),
+                    itemDisabled: isContextItemDisabled(item),
                     sharedChoices,
                     onRender: showList,
                     save,

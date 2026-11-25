@@ -13,7 +13,7 @@ import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
-import { collectSharedOutfitChoices } from '../../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, isContextItemDisabled, setContextItemDisabled } from '../../utils/characterLibrary.js';
 
 const { 
     callPopup, 
@@ -55,10 +55,10 @@ export const GeneratedEditor = {
                 contextItemHtml.find('.ExtBlocks_editor_context_item_name').text(context_item.name);
                 
                 const $checkbox = contextItemHtml.find('.disable_ExtBlocks');
-                $checkbox.prop('checked', context_item.disabled ?? false);
+                $checkbox.prop('checked', isContextItemDisabled(context_item));
 
                 $checkbox.on('change', function () {
-                    context_item.disabled = !!$(this).prop('checked');
+                    setContextItemDisabled(context_item, !!$(this).prop('checked'));
                 });
 
                 contextItemHtml.find('.ExtBlocks-toggle-on, .ExtBlocks-toggle-off').on('click', function (e) {
@@ -94,7 +94,7 @@ export const GeneratedEditor = {
         };
 
         const loadContextItemForEditing = (context_item) => {
-            characterLibrary.load(context_item.library, context_item.singleCharacter);
+            characterLibrary.load(context_item.library, context_item.library?.characters?.length === 1);
             editorHtml.find('.ExtBlocks-editor-context-builder-name').val(context_item.name);
             editorHtml.find('select[name="ExtBlocks-editor-context-builder-role"]').val(context_item.role ?? MessageRole.USER);
 
@@ -217,6 +217,12 @@ export const GeneratedEditor = {
 
             if (type === ContextType.CHARACTERS) {
                 item.library = characterLibrary.library;
+                if (item.library.characters.length === 1) {
+                    // The list owns the toggle. The item editor edits character data.
+                    setContextItemDisabled(item, existingItem?.library?.characters?.length === 1
+                        ? isContextItemDisabled(existingItem)
+                        : isContextItemDisabled(item));
+                }
                 if (existingItem?.singleCharacter && item.library.characters.length === 1) item.singleCharacter = true;
             } else if (type === ContextType.TEXT) {
                 item.text = String(editorHtml.find('.ExtBlocks-editor-context-builder-text-content').val());

@@ -4,6 +4,7 @@ import { ApiService } from '../services/ApiService.js';
 import { BlockService } from '../services/BlockService.js';
 import { MacroService } from '../services/MacroService.js';
 import { getRegexedString } from '../../../../../extensions/regex/engine.js';
+import { isContextItemDisabled } from '../utils/characterLibrary.js';
 
 const { chat, eventSource, event_types, addOneMessage, saveChat } = SillyTavern.getContext();
 
@@ -20,7 +21,7 @@ export const GeneratedPlugin = {
         const groupedBlocks = Object.create(null);
 
         blocks.forEach(block => {
-            const context = (block.context ?? []).filter(item => !item.disabled).map(({ id, name, disabled, ...fields }) => fields);
+            const context = (block.context ?? []).filter(item => !isContextItemDisabled(item)).map(({ id, name, disabled, ...fields }) => fields);
             const contextStr = JSON.stringify([Boolean(block.background), block.api_preset || '', Boolean(block.apply_regex), context]);
             if (!groupedBlocks[contextStr]) {
                 groupedBlocks[contextStr] = [];

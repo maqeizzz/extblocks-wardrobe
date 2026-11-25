@@ -2,7 +2,7 @@ import { getRegexedString } from '../../../../../extensions/regex/engine.js'
 import { extStates } from '../core/state.js';
 import { ContextType, MessageRole } from '../core/constants.js';
 import { getBlockFromMessage } from '../utils/blockUtils.js';
-import { collectSharedOutfitChoices, formatCharacterLibrary } from '../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, formatCharacterLibrary, isContextItemDisabled } from '../utils/characterLibrary.js';
 
 const { 
     substituteParams, 
@@ -30,7 +30,7 @@ export const ContextService = {
         };
 
         block.context.forEach((context_item) => {
-            if (context_item.disabled) return;
+            if (isContextItemDisabled(context_item)) return;
             if (context_item.type === ContextType.CHARACTERS) {
                 sharedChoices ??= collectSharedOutfitChoices(extStates.ExtBlocks_settings, SillyTavern.getContext().characters);
             }

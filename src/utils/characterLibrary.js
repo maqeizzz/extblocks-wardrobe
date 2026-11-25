@@ -35,6 +35,24 @@ export function getAvailableOutfits(outfits, characterId) {
     return outfits.filter(outfit => !outfit.ownerId || outfit.ownerId === characterId);
 }
 
+function getOnlyCharacter(item) {
+    if (item.type !== 'characters') return;
+    const characters = item.library?.characters;
+    if (Array.isArray(characters) && characters.length === 1 && typeof characters[0]?.id === 'string') {
+        return characters[0];
+    }
+}
+
+export function isContextItemDisabled(item) {
+    return Boolean(item.disabled || getOnlyCharacter(item)?.enabled === false);
+}
+
+export function setContextItemDisabled(item, disabled) {
+    item.disabled = disabled;
+    const character = getOnlyCharacter(item);
+    if (character?.id) character.enabled = true;
+}
+
 export function getSharedOutfitChoices(sharedWardrobe) {
     return readCharacterLibrary({ outfits: sharedWardrobe }).outfits.map(outfit => ({
         ...outfit,

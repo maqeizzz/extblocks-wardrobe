@@ -1,6 +1,6 @@
 import { BlockService } from '../services/BlockService.js';
 import { CharacterLibraryEditor } from './editors/CharacterLibraryEditor.js';
-import { getSharedOutfitChoices, readCharacterLibrary } from '../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, readCharacterLibrary, splitCharacterContext } from '../utils/characterLibrary.js';
 import { BlockType, ContextType, MessageRole } from '../core/constants.js';
 import { SettingsService } from '../services/SettingsService.js';
 
@@ -47,6 +47,7 @@ export const CharacterLibraryMenu = {
             const status = $('<div>', { role: 'status', class: 'ExtBlocks-quick-status' });
             const picker = $('<select>', { class: 'text_pole', 'aria-label': 'Block preset' });
             const empty = $('<p>', { class: 'ExtBlocks-quick-empty' });
+            const inheritedOutfits = $('<div>');
             const cached = new Map();
             let mode = 'characters';
             let selected = targets.findIndex(target => target.setIndex === settings.active_set_idx);
@@ -74,9 +75,24 @@ export const CharacterLibraryMenu = {
             });
             picker.val(String(selected)).prop('disabled', !targets.length);
 
+            const sharedChoices = () => collectSharedOutfitChoices(settings, SillyTavern.getContext().characters);
             const showList = () => {
                 const query = String(search.val()).trim().toLowerCase();
                 panel.attr('data-mode', mode);
+                if (mode === 'wardrobe') {
+                    const context = targets[selected]?.block.context;
+                    const items = Array.isArray(context) ? context : [];
+                    const localIds = new Set(items.flatMap(item => readCharacterLibrary(item?.library).outfits.map(outfit => outfit.id)));
+                    inheritedOutfits.empty();
+                    for (const outfit of sharedChoices()) {
+                        if (outfit.source === undefined || localIds.has(outfit.id)) continue;
+                        inheritedOutfits.append($('<details>', { class: 'ExtBlocks-outfit-card' }).append(
+                            $('<summary>').text(outfit.name || 'Unnamed outfit'),
+                            $('<p>').text(outfit.tags),
+                            $('<small>').text(`Edit in ${outfit.source || 'the original block'}`),
+                        ));
+                    }
+                }
                 tabs.children().each((_, tab) => $(tab).attr('aria-pressed', String(tab.dataset.mode === mode)));
                 const selector = mode === 'characters' ? '.ExtBlocks-character-card' : '.ExtBlocks-outfit-card';
                 let matches = 0;
@@ -106,56 +122,84 @@ export const CharacterLibraryMenu = {
             });
             shared.load({ outfits: settings.sharedWardrobe });
 
+            const makeEditor = (target, item, attached = true) => {
+                const { block, set } = target;
+                const save = async (library, split = null) => {
+                    if (saving) return;
+                    const priorContext = block.context;
+                    const priorLibrary = item.library;
+                    const priorName = item.name;
+                    const wasDisabled = item.disabled;
+                    saving = true;
+                    popup.prop('inert', true);
+                    try {
+                        const current = SillyTavern.getContext();
+                        const source = set
+                            ? settings.sets.includes(set) && set.global_blocks
+                            : current.characters[current.characterId] === card && card?.data?.extensions?.ExtBlocks;
+                        if (!Array.isArray(source) || !source.includes(block)) throw new Error('Block is no longer available');
+                        const context = Array.isArray(block.context) ? block.context : [];
+                        if (attached && !context.includes(item)) throw new Error('Library is no longer available');
+                        if (!attached) block.context = [...context, item];
+                        item.library = structuredClone(library);
+                        if (item.singleCharacter && item.library.characters.length === 1) {
+                            const [character] = item.library.characters;
+                            item.name = character.name.trim() || 'Unnamed character';
+                            item.disabled = editor.itemDisabled || !character.enabled;
+                            character.enabled = true;
+                        } else if (wasDisabled && !editor.itemDisabled) {
+                            item.disabled = false;
+                        }
+                        if (split) {
+                            block.context = context.flatMap(entry => entry === item ? [entry, split] : [entry]);
+                        }
+                        if (set) saveSettingsDebounced();
+                        else await BlockService.saveBlock(block, true);
+                        attached = true;
+                        if (item.singleCharacter) editor.itemDisabled = Boolean(item.disabled);
+                        if (split) {
+                            editor.load(item.library);
+                            const editors = cached.get(target);
+                            editors.splice(editors.indexOf(editor) + 1, 0, makeEditor(target, split));
+                            render();
+                        }
+                        for (const editors of cached.values()) {
+                            for (const other of editors) other.refreshOutfitChoices();
+                        }
+                        showList();
+                        status.text(block.disabled ? 'Saved. This block is disabled.' : `Saved to ${block.name}`);
+                    } catch (error) {
+                        block.context = priorContext;
+                        item.library = priorLibrary;
+                        item.name = priorName;
+                        item.disabled = wasDisabled;
+                        editor.itemDisabled = Boolean(wasDisabled);
+                        editor.load(priorLibrary);
+                        status.text('Could not save. Reopen ExtBlocks and try again.');
+                        console.error('[ExtBlocks] Could not save library:', error);
+                    } finally {
+                        saving = false;
+                        popup.prop('inert', false);
+                    }
+                };
+                const editor = new CharacterLibraryEditor($('<div>'), uuidv4, {
+                    itemDisabled: Boolean(item.disabled),
+                    sharedChoices,
+                    onRender: showList,
+                    save,
+                    splitCharacter: (characterId, library) => {
+                        const split = splitCharacterContext(item, library, characterId, uuidv4());
+                        if (split) void save(split.remainder, split.contextItem);
+                    },
+                });
+                editor.load(item.library);
+                return editor;
+            };
+
             const editorsForBlock = target => {
                 if (cached.has(target)) return cached.get(target);
-                const { block, set } = target;
-                const items = (Array.isArray(block.context) ? block.context : []).filter(item => item?.type === ContextType.CHARACTERS);
-                const editors = (items.length ? items : [{
-                    id: uuidv4(), type: ContextType.CHARACTERS, name: 'Characters & wardrobe', role: MessageRole.USER,
-                }]).map(item => {
-                    let attached = items.includes(item);
-                    const editor = new CharacterLibraryEditor($('<div>'), uuidv4, {
-                        itemDisabled: Boolean(item.disabled),
-                        sharedChoices: () => getSharedOutfitChoices(settings.sharedWardrobe),
-                        onRender: showList,
-                        save: async library => {
-                            const priorContext = block.context;
-                            const priorLibrary = item.library;
-                            const wasDisabled = item.disabled;
-                            saving = true;
-                            popup.prop('inert', true);
-                            try {
-                                const current = SillyTavern.getContext();
-                                const source = set
-                                    ? settings.sets.includes(set) && set.global_blocks
-                                    : current.characters[current.characterId] === card && card?.data?.extensions?.ExtBlocks;
-                                if (!Array.isArray(source) || !source.includes(block)) throw new Error('Block is no longer available');
-                                const context = Array.isArray(block.context) ? block.context : [];
-                                if (attached && !context.includes(item)) throw new Error('Library is no longer available');
-                                if (!attached) block.context = [...context, item];
-                                item.library = structuredClone(library);
-                                if (wasDisabled && !editor.itemDisabled) item.disabled = false;
-                                if (set) saveSettingsDebounced();
-                                else await BlockService.saveBlock(block, true);
-                                attached = true;
-                                status.text(block.disabled ? 'Saved. This block is disabled.' : `Saved to ${block.name}`);
-                            } catch (error) {
-                                block.context = priorContext;
-                                item.library = priorLibrary;
-                                item.disabled = wasDisabled;
-                                editor.itemDisabled = Boolean(wasDisabled);
-                                editor.load(priorLibrary);
-                                status.text('Could not save. Reopen ExtBlocks and try again.');
-                                console.error('[ExtBlocks] Could not save library:', error);
-                            } finally {
-                                saving = false;
-                                popup.prop('inert', false);
-                            }
-                        },
-                    });
-                    editor.load(item.library);
-                    return editor;
-                });
+                const items = Array.isArray(target.block.context) ? target.block.context : [];
+                const editors = items.filter(item => item?.type === ContextType.CHARACTERS).map(item => makeEditor(target, item));
                 cached.set(target, editors);
                 return editors;
             };
@@ -163,13 +207,23 @@ export const CharacterLibraryMenu = {
             const add = action('Add character', 'fa-plus', () => {
                 search.val('');
                 if (mode === 'wardrobe') shared.addEntry(mode);
-                else if (targets[selected]) editorsForBlock(targets[selected])[0].addEntry(mode);
+                else if (targets[selected]) {
+                    const target = targets[selected];
+                    const item = {
+                        id: uuidv4(), type: ContextType.CHARACTERS, name: 'Unnamed character', role: MessageRole.USER,
+                        disabled: true, singleCharacter: true,
+                    };
+                    const editor = makeEditor(target, item, false);
+                    editorsForBlock(target).push(editor);
+                    editor.addEntry('characters');
+                    render();
+                }
             });
             const render = () => {
                 panel.children().detach();
                 const target = targets[selected];
                 if (mode === 'wardrobe') {
-                    panel.append($('<section>').append($('<h4>').text('Shared wardrobe'), shared.container));
+                    panel.append($('<section>').append($('<h4>').text('Shared wardrobe'), shared.container, inheritedOutfits));
                 }
                 if (target) {
                     const blockPanel = $('<section>', { class: 'ExtBlocks-quick-block-panel' });

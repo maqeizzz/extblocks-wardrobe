@@ -44,13 +44,61 @@ export function getSharedOutfitChoices(sharedWardrobe) {
     }));
 }
 
-export function formatCharacterLibrary(library, sharedWardrobe) {
+export function collectSharedOutfitChoices(settings, characterCards = []) {
+    const choices = new Map(getSharedOutfitChoices(settings?.sharedWardrobe).map(outfit => [outfit.id, outfit]));
+    const blocks = [
+        ...(settings?.sets ?? []).flatMap(set => set.global_blocks ?? []),
+        ...characterCards.flatMap(card => card?.data?.extensions?.ExtBlocks ?? []),
+    ];
+    for (const block of blocks) {
+        for (const item of Array.isArray(block?.context) ? block.context : []) {
+            if (item?.type !== 'characters') continue;
+            for (const outfit of readCharacterLibrary(item.library).outfits) {
+                if (!outfit.ownerId && !choices.has(outfit.id)) {
+                    choices.set(outfit.id, { ...outfit, shared: true, source: block.name });
+                }
+            }
+        }
+    }
+    return [...choices.values()];
+}
+
+export function mergeOutfitChoices(local, shared) {
+    const ids = new Set(local.map(outfit => outfit.id));
+    return [...local, ...shared.filter(outfit => !ids.has(outfit.id))];
+}
+
+export function formatCharacterLibrary(library, sharedChoices = []) {
     const { characters, outfits } = readCharacterLibrary(library);
-    outfits.push(...getSharedOutfitChoices(sharedWardrobe));
+    const choices = mergeOutfitChoices(outfits, sharedChoices);
     return characters.filter(character => character.enabled).map(character => {
-        const outfit = getAvailableOutfits(outfits, character.id).find(item => item.id === character.outfitId);
+        const outfit = getAvailableOutfits(choices, character.id).find(item => item.id === character.outfitId);
         const tags = [character.appearance, outfit?.tags].map(text => text?.trim()).filter(Boolean).join(', ');
         const name = character.name.trim();
         return tags && name ? `${name}: ${tags}` : tags;
     }).filter(Boolean).join('\n');
+}
+
+export function splitCharacterContext(item, library, characterId, newId) {
+    const draft = readCharacterLibrary(library);
+    const character = draft.characters.find(entry => entry.id === characterId);
+    if (!character || draft.characters.length < 2) return;
+    return {
+        remainder: {
+            characters: draft.characters.filter(entry => entry.id !== characterId),
+            outfits: draft.outfits.filter(outfit => outfit.ownerId !== characterId),
+        },
+        contextItem: {
+            id: newId,
+            type: item.type,
+            name: character.name.trim() || 'Unnamed character',
+            role: item.role,
+            disabled: Boolean(item.disabled || !character.enabled),
+            singleCharacter: true,
+            library: {
+                characters: [{ ...character, enabled: true }],
+                outfits: draft.outfits.filter(outfit => outfit.ownerId === characterId),
+            },
+        },
+    };
 }

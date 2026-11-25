@@ -13,7 +13,7 @@ import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
-import { getSharedOutfitChoices } from '../../utils/characterLibrary.js';
+import { collectSharedOutfitChoices } from '../../utils/characterLibrary.js';
 
 const { 
     callPopup, 
@@ -40,7 +40,7 @@ export const GeneratedEditor = {
         let blockApiPreset = 'big';
         let fullTextTemplate = '';
         const characterLibrary = new CharacterLibraryEditor(editorHtml.find('.ExtBlocks-character-library'), uuidv4, {
-            sharedChoices: () => getSharedOutfitChoices(extensionSettings.ExtBlocks.sharedWardrobe),
+            sharedChoices: () => collectSharedOutfitChoices(extensionSettings.ExtBlocks, SillyTavern.getContext().characters),
         });
 
         // --- Context Management ---
@@ -94,7 +94,7 @@ export const GeneratedEditor = {
         };
 
         const loadContextItemForEditing = (context_item) => {
-            characterLibrary.load(context_item.library);
+            characterLibrary.load(context_item.library, context_item.singleCharacter);
             editorHtml.find('.ExtBlocks-editor-context-builder-name').val(context_item.name);
             editorHtml.find('select[name="ExtBlocks-editor-context-builder-role"]').val(context_item.role ?? MessageRole.USER);
 
@@ -217,6 +217,7 @@ export const GeneratedEditor = {
 
             if (type === ContextType.CHARACTERS) {
                 item.library = characterLibrary.library;
+                if (existingItem?.singleCharacter && item.library.characters.length === 1) item.singleCharacter = true;
             } else if (type === ContextType.TEXT) {
                 item.text = String(editorHtml.find('.ExtBlocks-editor-context-builder-text-content').val());
             } else if (type === ContextType.LAST_MESSAGES) {

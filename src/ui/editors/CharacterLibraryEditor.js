@@ -1,4 +1,4 @@
-import { getAvailableOutfits, readCharacterLibrary } from '../../utils/characterLibrary.js';
+import { getAvailableOutfits, mergeOutfitChoices, readCharacterLibrary } from '../../utils/characterLibrary.js';
 
 function button(label, action) {
     return $('<button>', { type: 'button', class: 'menu_button', text: label }).on('click', action);
@@ -14,7 +14,7 @@ function textField(value, update, multiline = false) {
 }
 
 export class CharacterLibraryEditor {
-    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [] } = {}) {
+    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [], splitCharacter = null } = {}) {
         this.container = container;
         this.createId = createId;
         this.save = save;
@@ -22,11 +22,13 @@ export class CharacterLibraryEditor {
         this.onRender = onRender;
         this.sharedOnly = sharedOnly;
         this.sharedChoices = sharedChoices;
+        this.splitCharacter = splitCharacter;
         this.drafts = new WeakMap();
     }
 
-    load(library) {
+    load(library, singleCharacter = false) {
         this.library = readCharacterLibrary(library);
+        this.singleCharacter = singleCharacter;
         this.render();
     }
 
@@ -87,7 +89,7 @@ export class CharacterLibraryEditor {
         const inlineOutfits = [];
         const outfitSummaries = new Map();
         const refreshChoices = () => {
-            const choices = [...outfits, ...this.sharedChoices()];
+            const choices = mergeOutfitChoices(outfits, this.sharedChoices());
             for (const [outfit, summary] of outfitSummaries) {
                 summary.text(outfit.name || 'Unnamed outfit');
             }
@@ -199,8 +201,11 @@ export class CharacterLibraryEditor {
             const inline = this.save ? $('<details>') : null;
             if (inline) inlineOutfits.push({ character, panel: inline });
             const card = $('<details>').prop('open', openId === character.id).append(
-                summary, details, this.save ? select : labeled('Outfit', select), ...(inline ? [inline] : [toggle]),
+                summary, details, this.save ? select : labeled('Outfit', select), ...(inline ? [inline] : this.singleCharacter ? [] : [toggle]),
                 ...(this.save ? [button('Add personal outfit', () => this.addEntry('wardrobe', character))] : []),
+                ...(this.splitCharacter && characters.length > 1
+                    ? [button('Move to own context item', () => this.splitCharacter(character.id, this.library))]
+                    : []),
                 button('Remove character', () => {
                     this.library.characters = characters.filter(item => item !== character);
                     this.library.outfits = outfits.filter(outfit => outfit.ownerId !== character.id);
@@ -212,7 +217,7 @@ export class CharacterLibraryEditor {
                 ? $('<article>', { class: 'ExtBlocks-character-card' }).append(toggle, card)
                 : card);
         }
-        if (!this.save) charactersSection.append(button('Add character', () => this.addEntry('characters')));
+        if (!this.save && !this.singleCharacter) charactersSection.append(button('Add character', () => this.addEntry('characters')));
 
         const wardrobe = $('<div>', { class: 'ExtBlocks-wardrobe-section' });
         if (!this.save) wardrobe.append($('<h4>').text('Wardrobe'));

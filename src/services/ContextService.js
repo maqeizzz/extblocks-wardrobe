@@ -2,7 +2,7 @@ import { getRegexedString } from '../../../../../extensions/regex/engine.js'
 import { extStates } from '../core/state.js';
 import { ContextType, MessageRole } from '../core/constants.js';
 import { getBlockFromMessage } from '../utils/blockUtils.js';
-import { formatCharacterLibrary } from '../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, formatCharacterLibrary } from '../utils/characterLibrary.js';
 
 const { 
     substituteParams, 
@@ -17,6 +17,7 @@ export const ContextService = {
         const contextMessages = [];
         let currentRole = null;
         let currentContent = [];
+        let sharedChoices;
         
         const flushCurrent = () => {
             if (currentContent.length > 0) {
@@ -30,7 +31,10 @@ export const ContextService = {
 
         block.context.forEach((context_item) => {
             if (context_item.disabled) return;
-            const content = this.getContextItemContent(context_item, messageId, allBlocks, additionalMacro);
+            if (context_item.type === ContextType.CHARACTERS) {
+                sharedChoices ??= collectSharedOutfitChoices(extStates.ExtBlocks_settings, SillyTavern.getContext().characters);
+            }
+            const content = this.getContextItemContent(context_item, messageId, allBlocks, additionalMacro, sharedChoices);
             if (!content) return;
             
             const role = context_item.role || MessageRole.USER;
@@ -48,9 +52,10 @@ export const ContextService = {
     /**
      * Gets the content for a single context item.
      */
-    getContextItemContent(context_item, messageId, allBlocks, additionalMacro) {
+    getContextItemContent(context_item, messageId, allBlocks, additionalMacro, sharedChoices) {
         if (context_item.type === ContextType.CHARACTERS) {
-            const content = formatCharacterLibrary(context_item.library, extStates.ExtBlocks_settings?.sharedWardrobe);
+            const choices = sharedChoices ?? collectSharedOutfitChoices(extStates.ExtBlocks_settings, SillyTavern.getContext().characters);
+            const content = formatCharacterLibrary(context_item.library, choices);
             return content ? substituteParams(content, { dynamicMacros: additionalMacro }) : '';
         }
         if (context_item.type === ContextType.TEXT) {

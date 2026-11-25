@@ -44,54 +44,6 @@ export function getSharedOutfitChoices(sharedWardrobe) {
     }));
 }
 
-export function getCatalogSharedChoices(settings) {
-    if (!settings?.characterCatalog) return getSharedOutfitChoices(settings?.sharedWardrobe);
-    return readCharacterLibrary(settings.characterCatalog).outfits.filter(outfit => !outfit.ownerId);
-}
-
-export function migrateCharacterCatalog(settings, blocks, activeBlocks, createId) {
-    const existing = settings.characterCatalog;
-    const catalog = readCharacterLibrary(existing);
-    const importedCharacters = new Set(existing?.importedCharacters ?? []);
-    const importedOutfits = new Map(existing?.importedOutfits ?? []);
-    const active = new Set(activeBlocks);
-    let changed = !existing;
-    if (!existing) {
-        catalog.outfits.push(...getSharedOutfitChoices(settings.sharedWardrobe).map(({ shared, ...outfit }) => outfit));
-    }
-    for (const block of [...activeBlocks, ...blocks]) {
-        for (const item of Array.isArray(block?.context) ? block.context : []) {
-            if (item?.type !== 'characters') continue;
-            const library = readCharacterLibrary(item.library);
-            for (const outfit of library.outfits) {
-                const key = JSON.stringify([outfit.id, outfit.ownerId]);
-                if (importedOutfits.has(key)) continue;
-                const id = createId();
-                importedOutfits.set(key, id);
-                catalog.outfits.push({ ...outfit, id });
-                changed = true;
-            }
-            for (const character of library.characters) {
-                if (importedCharacters.has(character.id)) continue;
-                const outfit = getAvailableOutfits(library.outfits, character.id).find(entry => entry.id === character.outfitId);
-                const outfitId = outfit ? importedOutfits.get(JSON.stringify([outfit.id, outfit.ownerId])) : character.outfitId;
-                catalog.characters.push({
-                    ...character, outfitId,
-                    enabled: !existing && character.enabled && active.has(block) && !block.disabled && !item.disabled,
-                });
-                importedCharacters.add(character.id);
-                changed = true;
-            }
-        }
-    }
-    if (changed) {
-        settings.characterCatalog = {
-            ...catalog, importedCharacters: [...importedCharacters], importedOutfits: [...importedOutfits],
-        };
-    }
-    return changed;
-}
-
 export function formatCharacterLibrary(library, sharedWardrobe) {
     const { characters, outfits } = readCharacterLibrary(library);
     outfits.push(...getSharedOutfitChoices(sharedWardrobe));

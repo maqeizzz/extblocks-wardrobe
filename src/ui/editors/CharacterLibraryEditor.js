@@ -14,11 +14,13 @@ function textField(value, update, multiline = false) {
 }
 
 export class CharacterLibraryEditor {
-    constructor(container, createId, { save = null, onRender = null, sharedChoices = () => [] } = {}) {
+    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [] } = {}) {
         this.container = container;
         this.createId = createId;
         this.save = save;
+        this.itemDisabled = itemDisabled;
         this.onRender = onRender;
+        this.sharedOnly = sharedOnly;
         this.sharedChoices = sharedChoices;
         this.drafts = new WeakMap();
     }
@@ -166,7 +168,7 @@ export class CharacterLibraryEditor {
                 refreshChoices();
                 this.onRender?.();
             }),
-            labeled('Available to', owner),
+            ...(this.sharedOnly ? [] : [labeled('Available to', owner)]),
         );
 
         const charactersSection = $('<div>', { class: 'ExtBlocks-characters-section' });
@@ -185,7 +187,11 @@ export class CharacterLibraryEditor {
             });
             outfitSelects.push({ select, character });
             const enabled = $('<input>', { type: 'checkbox', 'aria-label': 'Include in prompt' })
-                .prop('checked', character.enabled).on('change', event => {
+                .prop('checked', !this.itemDisabled && character.enabled).on('change', event => {
+                if (this.itemDisabled && event.target.checked) {
+                    for (const entry of characters) entry.enabled = false;
+                    this.itemDisabled = false;
+                }
                 character.enabled = event.target.checked;
                 void this.persist();
             });

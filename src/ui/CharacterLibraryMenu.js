@@ -146,8 +146,8 @@ export const CharacterLibraryMenu = {
                             const [character] = item.library.characters;
                             if (item.singleCharacter) item.name = character.name.trim() || 'Unnamed character';
                             setContextItemDisabled(item, editor.itemDisabled || !character.enabled);
-                        } else if (wasDisabled && !editor.itemDisabled) {
-                            item.disabled = false;
+                        } else {
+                            item.disabled = editor.itemDisabled || item.library.characters.every(character => !character.enabled);
                         }
                         if (split) {
                             block.context = context.flatMap(entry => entry === item ? [entry, split] : [entry]);
@@ -155,7 +155,12 @@ export const CharacterLibraryMenu = {
                         if (set) saveSettingsDebounced();
                         else await BlockService.saveBlock(block, true);
                         attached = true;
-                        if (item.library.characters.length === 1) editor.itemDisabled = isContextItemDisabled(item);
+                        editor.itemDisabled = isContextItemDisabled(item);
+                        const previousFlags = readCharacterLibrary(priorLibrary).characters.map(character => [character.id, character.enabled]);
+                        const nextFlags = item.library.characters.map(character => [character.id, character.enabled]);
+                        if (wasDisabled !== item.disabled || JSON.stringify(previousFlags) !== JSON.stringify(nextFlags)) {
+                            $(document).triggerHandler('extblocks-context-inclusion', [block, item]);
+                        }
                         if (split) {
                             editor.load(item.library);
                             const editors = cached.get(target);

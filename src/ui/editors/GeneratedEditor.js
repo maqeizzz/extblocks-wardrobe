@@ -13,7 +13,7 @@ import { interactiveSortData } from '../../utils/uiUtils.js';
 import { searchReplaceDiffTemplate } from '../../utils/searchReplaceDiffUtils.js';
 import { MainUI } from '../MainUI.js';
 import { CharacterLibraryEditor } from './CharacterLibraryEditor.js';
-import { collectSharedOutfitChoices, isContextItemDisabled, setContextItemDisabled } from '../../utils/characterLibrary.js';
+import { collectSharedOutfitChoices, copyContextItemInclusion, isContextItemDisabled, setContextItemDisabled } from '../../utils/characterLibrary.js';
 
 const { 
     callPopup, 
@@ -59,6 +59,7 @@ export const GeneratedEditor = {
 
                 $checkbox.on('change', function () {
                     setContextItemDisabled(context_item, !!$(this).prop('checked'));
+                    if (editingContextItemId === context_item.id) characterLibrary.syncInclusion(context_item);
                 });
 
                 contextItemHtml.find('.ExtBlocks-toggle-on, .ExtBlocks-toggle-off').on('click', function (e) {
@@ -327,8 +328,9 @@ export const GeneratedEditor = {
 
         // --- Initialization ---
 
+        const originalBlock = existingId ? array.find(block => block.id === existingId) : undefined;
         if (existingId) {
-            const block = array.find((b) => b.id === existingId);
+            const block = originalBlock;
             if (block) {
                 contextItems = structuredClone(block.context || []);
                 blockApiPreset = block.api_preset || 'big';
@@ -460,7 +462,21 @@ export const GeneratedEditor = {
             getter: () => contextItems,
         }]);
 
-        const popupResult = await callPopup(editorHtml, 'confirm', undefined, { okButton: 'Save', wide: true });
+        const syncInclusion = (_event, block, item) => {
+            if (block !== originalBlock || !item.id) return;
+            const draft = contextItems.find(entry => entry.id === item.id && entry.type === ContextType.CHARACTERS);
+            if (!draft) return;
+            copyContextItemInclusion(draft, item);
+            if (editingContextItemId === draft.id) characterLibrary.syncInclusion(draft);
+            void loadContextItems();
+        };
+        $(document).on('extblocks-context-inclusion', syncInclusion);
+        let popupResult;
+        try {
+            popupResult = await callPopup(editorHtml, 'confirm', undefined, { okButton: 'Save', wide: true });
+        } finally {
+            $(document).off('extblocks-context-inclusion', syncInclusion);
+        }
         if (popupResult) {
             const trigger_periodicity = editorHtml.find(`select[name="ExtBlocks-editor-trigger-periodicity"]`).val();
             const blockType = editorHtml.find(`select[name="ExtBlocks-editor-block-type"]`).val();

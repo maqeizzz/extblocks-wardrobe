@@ -1,4 +1,4 @@
-import { getAvailableOutfits, mergeOutfitChoices, readCharacterLibrary } from '../../utils/characterLibrary.js';
+import { copyContextItemInclusion, getAvailableOutfits, mergeOutfitChoices, readCharacterLibrary } from '../../utils/characterLibrary.js';
 
 function button(label, action) {
     return $('<button>', { type: 'button', class: 'menu_button', text: label }).on('click', action);
@@ -30,6 +30,14 @@ export class CharacterLibraryEditor {
         this.library = readCharacterLibrary(library);
         this.singleCharacter = singleCharacter;
         this.render();
+    }
+
+    syncInclusion(item) {
+        copyContextItemInclusion({ type: item.type, library: this.library }, item);
+        for (const character of this.library.characters) {
+            this.container.find('[data-extblocks-character-toggle]').filter((_, input) =>
+                input.dataset.extblocksCharacterToggle === character.id).prop('checked', character.enabled);
+        }
     }
 
     async persist() {
@@ -189,6 +197,7 @@ export class CharacterLibraryEditor {
             });
             outfitSelects.push({ select, character });
             const enabled = $('<input>', { type: 'checkbox', 'aria-label': 'Include in prompt' })
+                .attr('data-extblocks-character-toggle', character.id)
                 .prop('checked', !this.itemDisabled && character.enabled).on('change', event => {
                 if (this.itemDisabled && event.target.checked) {
                     for (const entry of characters) entry.enabled = false;

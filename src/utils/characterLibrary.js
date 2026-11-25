@@ -35,22 +35,30 @@ export function getAvailableOutfits(outfits, characterId) {
     return outfits.filter(outfit => !outfit.ownerId || outfit.ownerId === characterId);
 }
 
-function getOnlyCharacter(item) {
-    if (item.type !== 'characters') return;
-    const characters = item.library?.characters;
-    if (Array.isArray(characters) && characters.length === 1 && typeof characters[0]?.id === 'string') {
-        return characters[0];
-    }
+function getContextCharacters(item) {
+    const characters = item.type === 'characters' ? item.library?.characters : undefined;
+    return Array.isArray(characters) ? characters.filter(character => typeof character?.id === 'string' && character.id) : [];
 }
 
 export function isContextItemDisabled(item) {
-    return Boolean(item.disabled || getOnlyCharacter(item)?.enabled === false);
+    const characters = getContextCharacters(item);
+    return Boolean(item.disabled || (characters.length && characters.every(character => character.enabled === false)));
 }
 
 export function setContextItemDisabled(item, disabled) {
+    const characters = getContextCharacters(item);
     item.disabled = disabled;
-    const character = getOnlyCharacter(item);
-    if (character?.id) character.enabled = true;
+    if (characters.length === 1 || (!disabled && characters.every(character => character.enabled === false))) {
+        for (const character of characters) character.enabled = true;
+    }
+}
+
+export function copyContextItemInclusion(target, source) {
+    target.disabled = source.disabled;
+    const flags = new Map(getContextCharacters(source).map(character => [character.id, character.enabled]));
+    for (const character of getContextCharacters(target)) {
+        if (flags.has(character.id)) character.enabled = flags.get(character.id);
+    }
 }
 
 export function getSharedOutfitChoices(sharedWardrobe) {

@@ -14,11 +14,12 @@ function textField(value, update, multiline = false) {
 }
 
 export class CharacterLibraryEditor {
-    constructor(container, createId, { mode = 'both', save = null } = {}) {
+    constructor(container, createId, { save = null, itemDisabled = false, onRender = null } = {}) {
         this.container = container;
         this.createId = createId;
-        this.mode = mode;
         this.save = save;
+        this.itemDisabled = itemDisabled;
+        this.onRender = onRender;
         this.drafts = new WeakMap();
     }
 
@@ -31,19 +32,38 @@ export class CharacterLibraryEditor {
         if (this.save) await this.save(this.library);
     }
 
+    addEntry(mode) {
+        const id = this.createId();
+        if (mode === 'characters') {
+            this.library.characters.push({ id, name: '', appearance: '', outfitId: '', enabled: !this.save });
+        } else {
+            this.library.outfits.push({ id, name: '', tags: '', ownerId: '' });
+        }
+        this.render(id);
+        void this.persist();
+    }
+
     textFields(entry, descriptionKey, label, onSave) {
         const draft = this.drafts.get(entry) ?? { name: entry.name, [descriptionKey]: entry[descriptionKey] };
         this.drafts.set(entry, draft);
         const update = (key, value) => {
             draft[key] = value;
+            for (const field of this.container.find('[data-extblocks-field]')) {
+                const input = $(field);
+                if (input.data('entry') === entry && field.dataset.extblocksField === key && field.value !== value) {
+                    field.value = value;
+                }
+            }
             if (!this.save) {
                 entry[key] = value;
                 onSave();
             }
         };
+        const field = (key, multiline) => textField(draft[key], value => update(key, value), multiline)
+            .attr('data-extblocks-field', key).data('entry', entry);
         const fields = $('<div>').append(
-            labeled('Name', textField(draft.name, value => update('name', value))),
-            labeled(label, textField(draft[descriptionKey], value => update(descriptionKey, value), true)),
+            labeled('Name', field('name', false)),
+            labeled(label, field(descriptionKey, true)),
         );
         if (this.save) {
             fields.append(button('Save details', () => {
@@ -62,13 +82,35 @@ export class CharacterLibraryEditor {
         const ownerSelects = [];
         const outfitSelects = [];
         const inlineOutfits = [];
+        const outfitSummaries = new Map();
         const refreshChoices = () => {
+            for (const [outfit, summary] of outfitSummaries) {
+                summary.text(outfit.name || 'Unnamed outfit');
+            }
             for (const { select, outfit } of [...ownerSelects, ...inlineOutfits.map(entry => entry.owner).filter(Boolean)]) {
                 fillOwnerSelect(select, outfit);
             }
             for (const { select, character } of outfitSelects) {
+                const available = getAvailableOutfits(outfits, character.id);
+                if (this.save) {
+                    const selected = available.find(outfit => outfit.id === character.outfitId)?.id ?? '';
+                    select.empty();
+                    for (const outfit of [{ id: '', name: 'No outfit' }, ...available]) {
+                        const isSelected = selected === outfit.id;
+                        const choice = button(outfit.name || 'Unnamed outfit', () => {
+                            if (isSelected) return;
+                            character.outfitId = outfit.id;
+                            refreshChoices();
+                            select.find('button[aria-pressed="true"]').trigger('focus');
+                            void this.persist();
+                        }).attr('aria-pressed', String(isSelected)).addClass('ExtBlocks-outfit-chip');
+                        choice.prepend($('<i>', { class: outfit.id ? 'fa-solid fa-shirt' : 'fa-solid fa-ban', 'aria-hidden': 'true' }));
+                        select.append(choice);
+                    }
+                    continue;
+                }
                 select.empty().append(new Option('No outfit', ''));
-                for (const outfit of getAvailableOutfits(outfits, character.id)) {
+                for (const outfit of available) {
                     select.append(new Option(outfit.name || 'Unnamed outfit', outfit.id));
                 }
                 select.val(character.outfitId || '');
@@ -112,58 +154,65 @@ export class CharacterLibraryEditor {
                 void this.persist();
             });
         };
-        const outfitFields = (outfit, owner, onSave = refreshChoices) => $('<div>').append(
-            this.textFields(outfit, 'tags', 'Clothing tags', onSave),
+        const outfitFields = (outfit, owner) => $('<div>').append(
+            this.textFields(outfit, 'tags', 'Clothing tags', () => {
+                refreshChoices();
+                this.onRender?.();
+            }),
             labeled('Available to', owner),
         );
 
-        const charactersSection = $('<div>').append($('<h4>').text('Characters'));
+        const charactersSection = $('<div>', { class: 'ExtBlocks-characters-section' });
+        if (!this.save) charactersSection.append($('<h4>').text('Characters'));
         for (const character of characters) {
             const summary = $('<summary>').text(character.name || 'Unnamed character');
             const details = this.textFields(character, 'appearance', 'Appearance tags', () => {
                 summary.text(character.name || 'Unnamed character');
                 refreshChoices();
+                this.onRender?.();
             });
-            const select = $('<select>', { class: 'text_pole wide100p' }).on('change', event => {
+            const select = this.save ? $('<div>', { class: 'ExtBlocks-outfit-choices', role: 'group', 'aria-label': 'Outfits' })
+                : $('<select>', { class: 'text_pole wide100p' }).on('change', event => {
                 character.outfitId = event.target.value;
                 refreshChoices();
-                void this.persist();
             });
             outfitSelects.push({ select, character });
-            const enabled = $('<input>', { type: 'checkbox' }).prop('checked', character.enabled).on('change', event => {
+            const enabled = $('<input>', { type: 'checkbox', 'aria-label': 'Include in prompt' })
+                .prop('checked', !this.itemDisabled && character.enabled).on('change', event => {
+                if (this.itemDisabled && event.target.checked) {
+                    for (const entry of characters) entry.enabled = false;
+                    this.itemDisabled = false;
+                }
                 character.enabled = event.target.checked;
                 void this.persist();
             });
-            const inline = this.mode === 'characters' ? $('<details>') : null;
-            if (this.mode === 'characters') inlineOutfits.push({ character, panel: inline });
-            charactersSection.append($('<details>').prop('open', openId === character.id).append(
-                summary, labeled('Outfit', select), ...(inline ? [inline] : []), details,
-                $('<label class="checkbox_label">').append(enabled, ' Include in prompt'),
+            const toggle = $('<label>', { class: 'checkbox_label ExtBlocks-character-toggle' }).append(enabled, ' In prompt');
+            const inline = this.save ? $('<details>') : null;
+            if (inline) inlineOutfits.push({ character, panel: inline });
+            const card = $('<details>').prop('open', openId === character.id).append(
+                summary, details, this.save ? select : labeled('Outfit', select), ...(inline ? [inline] : [toggle]),
                 button('Remove character', () => {
                     this.library.characters = characters.filter(item => item !== character);
                     this.library.outfits = outfits.filter(outfit => outfit.ownerId !== character.id);
                     this.render();
                     void this.persist();
                 }),
-            ));
+            );
+            charactersSection.append(this.save
+                ? $('<article>', { class: 'ExtBlocks-character-card' }).append(toggle, card)
+                : card);
         }
-        charactersSection.append(button('Add character', () => {
-            const id = this.createId();
-            characters.push({ id, name: '', appearance: '', outfitId: '', enabled: true });
-            this.render(id);
-            void this.persist();
-        }));
+        if (!this.save) charactersSection.append(button('Add character', () => this.addEntry('characters')));
 
-        const wardrobe = $('<div>').append($('<h4>').text('Wardrobe'));
+        const wardrobe = $('<div>', { class: 'ExtBlocks-wardrobe-section' });
+        if (!this.save) wardrobe.append($('<h4>').text('Wardrobe'));
         for (const outfit of outfits) {
             const summary = $('<summary>').text(outfit.name || 'Unnamed outfit');
+            outfitSummaries.set(outfit, summary);
             const select = ownerSelect(outfit);
-            const fields = outfitFields(outfit, select, () => {
-                summary.text(outfit.name || 'Unnamed outfit');
-                refreshChoices();
-            });
+            const fields = outfitFields(outfit, select);
             ownerSelects.push({ select, outfit });
-            wardrobe.append($('<details>').prop('open', openId === outfit.id).append(
+            wardrobe.append($('<details>', { class: 'ExtBlocks-outfit-card' }).prop('open', openId === outfit.id).append(
                 summary, fields,
                 button('Remove outfit', () => {
                     this.library.outfits = outfits.filter(item => item !== outfit);
@@ -175,15 +224,10 @@ export class CharacterLibraryEditor {
                 }),
             ));
         }
-        wardrobe.append(button('Add outfit', () => {
-            const id = this.createId();
-            outfits.push({ id, name: '', tags: '', ownerId: '' });
-            this.render(id);
-            void this.persist();
-        }));
+        if (!this.save) wardrobe.append(button('Add outfit', () => this.addEntry('wardrobe')));
 
-        if (this.mode !== 'wardrobe') this.container.append(charactersSection);
-        if (this.mode !== 'characters') this.container.append(wardrobe);
+        this.container.append(charactersSection, wardrobe);
         refreshChoices();
+        this.onRender?.();
     }
 }

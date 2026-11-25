@@ -10,7 +10,7 @@ Use **Add outfit** under **Wardrobe** to enter clothing tags. Set **Available to
 
 Each included character contributes one line in the form `Name: appearance tags, outfit tags`. The item follows the same ordering, message role and macro substitution as text items. Its library is stored with the item and travels with context, block and preset JSON exports. Existing text items can still be edited normally. Move character tags out of the old items if you want each set of tags to appear just once.
 
-Open **ExtBlocks · Characters** or **ExtBlocks · Wardrobe** from the wand menu next to the chat box. Select the block and library you want to edit. Outfit selection, character inclusion and outfit ownership apply immediately. Use **Save details** for names and tags. You can edit the selected outfit and its ownership directly under a character, or manage all outfits in the Wardrobe window. These shortcuts edit the same libraries used by the Context Builder.
+Open **ExtBlocks** from the wand menu next to the chat box, then switch between **Characters** and **Wardrobe**. Search by name and use the checkbox next to a character to include them in the prompt. Expand the character and select an outfit by its name and icon. Outfit selection, character inclusion and outfit ownership apply immediately. Use **Save details** for names and tags. The window edits existing context libraries and creates one automatically when you add the first entry to a block. If an entire block is switched off, use its **Enable block** button to resume generation. Enabling one character from a previously disabled library leaves the other characters off.
 
 ### Updating a hosted instance
 

@@ -512,3 +512,92 @@ input.disable_ExtBlocks {
     min-height: 1.5em;
     overflow-wrap: anywhere;
 }
+
+.ExtBlocks-quick-tabs,
+.ExtBlocks-quick-toolbar,
+.ExtBlocks-outfit-choices,
+.ExtBlocks-quick-caption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ExtBlocks-quick-tabs {
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+}
+
+.ExtBlocks-quick-toolbar input[type="search"] {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.ExtBlocks-quick-toolbar select {
+    width: auto;
+    max-width: 100%;
+}
+
+.ExtBlocks-quick-library button.menu_button {
+    width: auto;
+    max-width: 100%;
+    min-height: 2.25rem;
+    padding-inline: 0.7rem;
+    white-space: normal;
+}
+
+.ExtBlocks-quick-action,
+.ExtBlocks-outfit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+}
+
+.ExtBlocks-quick-tabs [aria-pressed="true"],
+.ExtBlocks-outfit-chip[aria-pressed="true"] {
+    background: var(--SmartThemeQuoteColor);
+    color: var(--SmartThemeBlurTintColor);
+    border-color: var(--SmartThemeQuoteColor);
+    font-weight: bold;
+}
+
+.ExtBlocks-quick-list[data-mode="characters"] .ExtBlocks-wardrobe-section,
+.ExtBlocks-quick-list[data-mode="wardrobe"] .ExtBlocks-characters-section,
+.ExtBlocks-quick-caption:empty {
+    display: none;
+}
+
+.ExtBlocks-quick-caption {
+    font-size: 0.85em;
+    margin-top: 0.75rem;
+}
+
+.ExtBlocks-character-card {
+    position: relative;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 0.5rem;
+    margin-block: 0.55rem;
+}
+
+.ExtBlocks-character-card > details {
+    border: 0;
+    margin: 0;
+}
+
+.ExtBlocks-character-card > details > summary {
+    padding-inline-end: 8rem;
+    min-height: 1.75rem;
+}
+
+.ExtBlocks-character-toggle {
+    position: absolute;
+    inset-block-start: 0.35rem;
+    inset-inline-end: 0.55rem;
+    white-space: nowrap;
+    font-size: 0.85em;
+}
+
+.ExtBlocks-outfit-choices {
+    margin-block: 0.65rem;
+}

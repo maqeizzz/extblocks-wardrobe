@@ -10,6 +10,8 @@ Use **Add outfit** under **Wardrobe** to enter clothing tags. Set **Available to
 
 Each included character contributes one line in the form `Name: appearance tags, outfit tags`. The item follows the same ordering, message role and macro substitution as text items. Its library is stored with the item and travels with context, block and preset JSON exports. Existing text items can still be edited normally. Move character tags out of the old items if you want each set of tags to appear just once.
 
+Open **ExtBlocks · Characters** or **ExtBlocks · Wardrobe** from the wand menu next to the chat box. Select the block and library you want to edit. Outfit selection, character inclusion and outfit ownership apply immediately. Use **Save details** for names and tags. You can edit the selected outfit and its ownership directly under a character, or manage all outfits in the Wardrobe window. These shortcuts edit the same libraries used by the Context Builder.
+
 ### Updating a hosted instance
 
 ExtBlocks 1.1.0 sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.

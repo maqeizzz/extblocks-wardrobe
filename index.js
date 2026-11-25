@@ -9,6 +9,7 @@ import { SettingsUI } from './src/ui/SettingsUI.js';
 import { EventController } from './src/ui/EventController.js';
 import { SlashCommandController } from './src/ui/SlashCommandController.js';
 import { SelectionRewriteController } from './src/ui/SelectionRewriteController.js';
+import { CharacterLibraryMenu } from './src/ui/CharacterLibraryMenu.js';
 
 import { PluginRegistry } from './src/core/PluginRegistry.js';
 import { ScriptPlugin } from './src/plugins/ScriptPlugin.js';
@@ -40,6 +41,7 @@ jQuery(async () => {
     initPlugins();
     $('#extensions_settings').append(await renderExtensionTemplateAsync(templates_path, ElementTemplate.SETTINGS));
     await loadSettings();
+    CharacterLibraryMenu.init();
     await SettingsUI.setupListeners();
     EventController.init();
     SlashCommandController.init();

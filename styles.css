@@ -494,3 +494,21 @@ input.disable_ExtBlocks {
 .ExtBlocks-character-library textarea {
     min-height: 4em;
 }
+
+.ExtBlocks-quick-library {
+    text-align: start;
+    width: 100%;
+}
+
+.ExtBlocks-quick-library .ExtBlocks-character-library textarea {
+    min-height: 7em;
+}
+
+.ExtBlocks-quick-library details:empty {
+    display: none;
+}
+
+.ExtBlocks-quick-status {
+    min-height: 1.5em;
+    overflow-wrap: anywhere;
+}

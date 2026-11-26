@@ -609,6 +609,25 @@ input.disable_ExtBlocks {
     font-size: 0.85em;
 }
 
+.ExtBlocks-wardrobe-owner-group > summary {
+    padding: 0.45rem 0.6rem;
+    font-weight: 600;
+}
+
+.ExtBlocks-wardrobe-owner-group > summary > small {
+    margin-inline-start: 0.65rem;
+    font-weight: normal;
+    opacity: 0.8;
+}
+
+.ExtBlocks-wardrobe-owner-group > .ExtBlocks-wardrobe-rows {
+    margin: 0.2rem 0.4rem 0.45rem;
+}
+
+.ExtBlocks-wardrobe-owner-group .ExtBlocks-outfit-owner {
+    display: none;
+}
+
 .ExtBlocks-quick-library-v5 :focus-visible {
     outline: 2px solid var(--SmartThemeQuoteColor);
     outline-offset: 2px;
@@ -703,6 +722,66 @@ input.disable_ExtBlocks {
     inset-inline-end: 0.55rem;
     white-space: nowrap;
     font-size: 0.85em;
+}
+
+.ExtBlocks-quick-block-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr));
+    gap: 0.4rem;
+    align-items: start;
+}
+
+.ExtBlocks-quick-block-panel > div,
+.ExtBlocks-quick-block-panel .ExtBlocks-characters-section {
+    display: contents;
+}
+
+.ExtBlocks-quick-library-v5 .ExtBlocks-quick-block-panel .ExtBlocks-character-card {
+    margin: 0;
+    border-radius: 0.55rem;
+}
+
+.ExtBlocks-quick-block-panel .ExtBlocks-character-card:has(> details[open]) {
+    grid-column: 1 / -1;
+}
+
+.ExtBlocks-quick-library-v5 .ExtBlocks-quick-block-panel .ExtBlocks-character-card > details {
+    padding: 0.45rem 0.65rem;
+}
+
+.ExtBlocks-quick-block-panel .ExtBlocks-character-card > details > summary {
+    min-height: 2rem;
+    padding-inline-end: 8.8rem;
+}
+
+.ExtBlocks-character-context:not(:empty) {
+    margin-inline-start: 0.45rem;
+    opacity: 0.8;
+}
+
+.ExtBlocks-character-actions {
+    position: absolute;
+    inset-block-start: 0.35rem;
+    inset-inline-end: 0.45rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.ExtBlocks-quick-library-v5 .ExtBlocks-character-actions .ExtBlocks-character-toggle {
+    position: static;
+}
+
+.ExtBlocks-quick-library .ExtBlocks-character-actions .ExtBlocks-favorite-button {
+    min-height: 1.9rem;
+    width: 1.9rem;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.ExtBlocks-favorite-button span:empty {
+    display: none;
 }
 
 .ExtBlocks-outfit-choices {

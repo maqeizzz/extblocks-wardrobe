@@ -512,6 +512,9 @@ export const GeneratedEditor = {
 
             const preparedBlock = EditorService.prepareBlockForSave(blockData);
             await BlockService.saveBlock(preparedBlock, isScoped);
+            if (originalBlock && array.includes(preparedBlock)) {
+                $(document).triggerHandler('extblocks-block-edited', [originalBlock, preparedBlock]);
+            }
             await MainUI.loadBlocks();
         }
     }

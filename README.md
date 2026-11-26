@@ -14,6 +14,8 @@ Open **ExtBlocks** from the wand menu next to the chat box. Choose a block in **
 
 **Add shared outfit** in Wardrobe adds an outfit to every character's choices. Use **Add personal outfit** inside a character's card to create and select an outfit only for that character. Changing an outfit's **Available to** field to **Shared** also makes it available across saved presets and loaded character cards. Edit these outfits in their original library. Block exports carry selections, and standalone shared outfits are saved in ExtBlocks settings.
 
+Open a character in **Personal outfits** to see their clothes. **Remove outfit** is available in the wardrobe and when editing an outfit from its source character. To remove one from the Context Builder, save the context item and then save the block. In **Characters**, use the star and the **Favorites** filter to find frequently used characters. Favorites are saved as a display preference.
+
 ### Updating a hosted instance
 
 ExtBlocks sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.

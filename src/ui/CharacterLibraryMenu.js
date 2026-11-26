@@ -52,7 +52,10 @@ export const CharacterLibraryMenu = {
             const sharedSection = $('<section>', { class: 'ExtBlocks-wardrobe-group' }).append($('<h4>').text('Shared wardrobe'), sharedRows);
             const personalSection = $('<section>', { class: 'ExtBlocks-wardrobe-group' }).append($('<h4>').text('Personal outfits'), personalRows);
             const inheritedOutfits = new Map();
+            const ownerGroups = new Map();
             const cached = new Map();
+            const favorites = new Set(Array.isArray(settings.quickFavorites) ? settings.quickFavorites : []);
+            let favoritesOnly = false;
             let mode = 'characters';
             let selected = targets.findIndex(target => target.setIndex === settings.active_set_idx);
             selected = selected < 0 ? 0 : selected;
@@ -89,11 +92,23 @@ export const CharacterLibraryMenu = {
                     const label = summary.querySelector('.ExtBlocks-outfit-name');
                     const owner = summary.querySelector('.ExtBlocks-outfit-owner');
                     const text = label ? `${label.textContent} ${owner?.textContent ?? ''}` : summary.textContent;
-                    const show = text.trim().toLowerCase().includes(query);
+                    const show = text.trim().toLowerCase().includes(query)
+                        && (mode !== 'characters' || !favoritesOnly || entry.dataset.favorite === 'true');
                     $(entry).toggle(show);
                     if (show) matches++;
                 });
                 if (mode === 'wardrobe') {
+                    personalRows.children().each((_, group) => {
+                        const show = $(group).find('.ExtBlocks-outfit-card').toArray().some(card => card.style.display !== 'none');
+                        $(group).toggle(show);
+                        if (query && show) {
+                            if (group.dataset.openBeforeSearch === undefined) group.dataset.openBeforeSearch = String(group.open);
+                            group.open = true;
+                        } else if (group.dataset.openBeforeSearch !== undefined) {
+                            group.open = group.dataset.openBeforeSearch === 'true';
+                            delete group.dataset.openBeforeSearch;
+                        }
+                    });
                     for (const [section, rows] of [[sharedSection, sharedRows], [personalSection, personalRows]]) {
                         section.toggle(rows.children().toArray().some(row => row.style.display !== 'none'));
                     }
@@ -101,12 +116,38 @@ export const CharacterLibraryMenu = {
                 const message = mode === 'characters'
                     ? targets.length ? 'No characters in this block.' : 'Create or import a block first.'
                     : 'No outfits yet.';
-                empty.text(query ? 'No matches.' : message).toggle(!matches);
+                empty.text(query ? 'No matches.' : mode === 'characters' && favoritesOnly ? 'No favorite characters in this block.' : message).toggle(!matches);
             };
+            const favoriteFilter = action('Favorites', 'fa-star', () => {
+                favoritesOnly = !favoritesOnly;
+                favoriteFilter.attr('aria-pressed', String(favoritesOnly));
+                filterList();
+            }).attr('aria-pressed', 'false');
+
             const showList = () => {
                 panel.attr('data-mode', mode);
                 tabs.children().each((_, tab) => $(tab).attr('aria-pressed', String(tab.dataset.mode === mode)));
+                favoriteFilter.toggle(mode === 'characters');
                 if (mode === 'wardrobe') updateWardrobeRows();
+                else {
+                    const byName = new Map();
+                    panel.find('.ExtBlocks-character-card').each((_, row) => {
+                        const name = $(row).find('.ExtBlocks-character-name').first().text().trim().toLowerCase();
+                        if (!byName.has(name)) byName.set(name, []);
+                        byName.get(name).push(row);
+                    });
+                    for (const rows of byName.values()) {
+                        const counts = new Map();
+                        for (const row of rows) counts.set(row.dataset.contextLabel, (counts.get(row.dataset.contextLabel) ?? 0) + 1);
+                        rows.forEach((row, index) => {
+                            const name = $(row).find('.ExtBlocks-character-name').first().text();
+                            const contextName = row.dataset.contextLabel;
+                            const label = contextName && contextName !== name ? contextName : '';
+                            const suffix = counts.get(contextName) > 1 ? `#${index + 1}` : '';
+                            $(row).find('.ExtBlocks-character-context').text([label, suffix].filter(Boolean).join(' · '));
+                        });
+                    }
+                }
                 filterList();
             };
             const setWardrobeRows = (list, cards) => {
@@ -146,7 +187,36 @@ export const CharacterLibraryMenu = {
                     ...localCards.filter(card => card.dataset.outfitScope === 'shared'),
                     ...inherited,
                 ]);
-                setWardrobeRows(personalRows, localCards.filter(card => card.dataset.outfitScope === 'personal'));
+                if (!ownerGroups.has(target)) ownerGroups.set(target, new Map());
+                const groups = ownerGroups.get(target);
+                const owners = new Map();
+                for (const editor of editors) {
+                    for (const card of editor.wardrobeCards.toArray()) {
+                        if (card.dataset.outfitScope !== 'personal') continue;
+                        const key = JSON.stringify([editor.contextItem.id, card.dataset.outfitOwnerId]);
+                        if (!owners.has(key)) owners.set(key, []);
+                        owners.get(key).push(card);
+                    }
+                }
+                const names = new Map();
+                const groupsToShow = [];
+                for (const [key, cards] of owners) {
+                    if (!groups.has(key)) {
+                        groups.set(key, $('<details>', { class: 'ExtBlocks-wardrobe-owner-group' }).append(
+                            $('<summary>').append($('<span>'), $('<small>')),
+                            $('<div>', { class: 'ExtBlocks-wardrobe-rows' }),
+                        ));
+                    }
+                    const group = groups.get(key);
+                    const owner = $(cards[0]).find('.ExtBlocks-outfit-owner').text();
+                    names.set(owner, (names.get(owner) ?? 0) + 1);
+                    const caption = names.get(owner) > 1 ? `${owner} · #${names.get(owner)}` : owner;
+                    group.find('summary').first().children('span').text(caption);
+                    group.find('summary').first().children('small').text(String(cards.length));
+                    setWardrobeRows(group.children('div'), cards);
+                    groupsToShow.push(group.get(0));
+                }
+                setWardrobeRows(personalRows, groupsToShow);
             };
             const shared = new CharacterLibraryEditor($('<div>'), uuidv4, {
                 sharedOnly: true,
@@ -232,11 +302,33 @@ export const CharacterLibraryMenu = {
                     sharedChoices,
                     onRender: showList,
                     save,
+                    characterActions: (row, character, summary) => {
+                        const key = JSON.stringify([target.set?.name ?? card?.avatar ?? '', block.id ?? block.name, item.id, character.id]);
+                        const star = action('', 'fa-star', () => {
+                            if (favorites.has(key)) favorites.delete(key);
+                            else favorites.add(key);
+                            settings.quickFavorites = [...favorites];
+                            saveSettingsDebounced();
+                            updateStar();
+                            filterList();
+                        }).addClass('ExtBlocks-favorite-button');
+                        const updateStar = () => {
+                            const active = favorites.has(key);
+                            row.attr('data-favorite', String(active));
+                            const label = active ? 'Remove from favorites' : 'Add to favorites';
+                            star.attr({ 'aria-pressed': String(active), 'aria-label': label, title: label });
+                        };
+                        row.attr('data-context-label', item.name ?? '');
+                        summary.append($('<small>', { class: 'ExtBlocks-character-context' }));
+                        row.children('.ExtBlocks-character-actions').prepend(star);
+                        updateStar();
+                    },
                     splitCharacter: (characterId, library) => {
                         const split = splitCharacterContext(item, library, characterId, uuidv4());
                         if (split) void save(split.remainder, split.contextItem);
                     },
                 });
+                editor.contextItem = item;
                 editor.load(item.library);
                 return editor;
             };
@@ -313,13 +405,32 @@ export const CharacterLibraryMenu = {
                 $('<h3>').text('ExtBlocks'),
                 $('<label>').append($('<span>').text('Block preset'), picker),
             );
-            popup.append(header, tabs, $('<div>', { class: 'ExtBlocks-quick-toolbar' }).append(search, add), status, panel, empty);
+            popup.append(header, tabs, $('<div>', { class: 'ExtBlocks-quick-toolbar' }).append(search, favoriteFilter, add), status, panel, empty);
             if (targets[selected]?.block.disabled) status.text('This block is disabled.');
             render();
-            await callGenericPopup(popup, POPUP_TYPE.TEXT, '', {
-                large: true, wide: true, allowVerticalScrolling: true, leftAlign: true, okButton: 'Close',
-                onClosing: () => !saving,
-            });
+            const onBlockEdited = (_event, previous, current) => {
+                const target = targets.find(entry => entry.block === previous);
+                if (target) {
+                    for (const editor of cached.get(target) ?? []) editor.wardrobeCards.remove();
+                    cached.delete(target);
+                    ownerGroups.delete(target);
+                    target.block = current;
+                }
+                for (const editors of cached.values()) {
+                    for (const editor of editors) editor.refreshOutfitChoices();
+                }
+                if (target === targets[selected]) render();
+                else showList();
+            };
+            $(document).on('extblocks-block-edited', onBlockEdited);
+            try {
+                await callGenericPopup(popup, POPUP_TYPE.TEXT, '', {
+                    large: true, wide: true, allowVerticalScrolling: true, leftAlign: true, okButton: 'Close',
+                    onClosing: () => !saving,
+                });
+            } finally {
+                $(document).off('extblocks-block-edited', onBlockEdited);
+            }
         } catch (error) {
             console.error('[ExtBlocks] Could not open library:', error);
             toastr.error('[ExtBlocks] Could not open the character library.');

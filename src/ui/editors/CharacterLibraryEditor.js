@@ -14,7 +14,7 @@ function textField(value, update, multiline = false) {
 }
 
 export class CharacterLibraryEditor {
-    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [], splitCharacter = null } = {}) {
+    constructor(container, createId, { save = null, itemDisabled = false, onRender = null, sharedOnly = false, sharedChoices = () => [], splitCharacter = null, characterActions = null } = {}) {
         this.container = container;
         this.createId = createId;
         this.save = save;
@@ -23,6 +23,7 @@ export class CharacterLibraryEditor {
         this.sharedOnly = sharedOnly;
         this.sharedChoices = sharedChoices;
         this.splitCharacter = splitCharacter;
+        this.characterActions = characterActions;
         this.drafts = new WeakMap();
     }
 
@@ -53,6 +54,15 @@ export class CharacterLibraryEditor {
             if (character) character.outfitId = id;
         }
         this.render(character?.id ?? id);
+        void this.persist();
+    }
+
+    removeOutfit(outfit, openId) {
+        this.library.outfits = this.library.outfits.filter(entry => entry !== outfit);
+        for (const character of this.library.characters) {
+            if (character.outfitId === outfit.id) character.outfitId = '';
+        }
+        this.render(openId);
         void this.persist();
     }
 
@@ -106,6 +116,7 @@ export class CharacterLibraryEditor {
                     const character = characters.find(entry => entry.id === outfit.ownerId);
                     owner.text(outfit.ownerId ? (character ? character.name || 'Unnamed character' : 'Missing character') : '');
                     card.attr('data-outfit-scope', outfit.ownerId ? 'personal' : 'shared');
+                    card.attr('data-outfit-owner-id', outfit.ownerId);
                 }
             }
             for (const { select, outfit } of [...ownerSelects, ...inlineOutfits.map(entry => entry.owner).filter(Boolean)]) {
@@ -151,7 +162,11 @@ export class CharacterLibraryEditor {
                 } else if (outfit) {
                     const owner = ownerSelect(outfit);
                     entry.owner = { select: owner, outfit };
-                    entry.panel.prop('open', true).append($('<summary>').text('Edit selected outfit'), outfitFields(outfit, owner));
+                    entry.panel.prop('open', true).append(
+                        $('<summary>').text('Edit selected outfit'),
+                        outfitFields(outfit, owner),
+                        button('Remove outfit', () => this.removeOutfit(outfit, entry.character.id)),
+                    );
                 }
             }
         };
@@ -191,9 +206,10 @@ export class CharacterLibraryEditor {
         const charactersSection = $('<div>', { class: 'ExtBlocks-characters-section' });
         if (!this.save) charactersSection.append($('<h4>').text('Characters'));
         for (const character of characters) {
-            const summary = $('<summary>').text(character.name || 'Unnamed character');
+            const name = $('<span>', { class: 'ExtBlocks-character-name' }).text(character.name || 'Unnamed character');
+            const summary = $('<summary>').append(name);
             const details = this.textFields(character, 'appearance', 'Appearance tags', () => {
-                summary.text(character.name || 'Unnamed character');
+                name.text(character.name || 'Unnamed character');
                 refreshChoices();
                 this.onRender?.();
             });
@@ -229,9 +245,16 @@ export class CharacterLibraryEditor {
                     void this.persist();
                 }),
             );
-            charactersSection.append(this.save
-                ? $('<article>', { class: 'ExtBlocks-character-card' }).append(toggle, card)
-                : card);
+            if (this.save) {
+                const row = $('<article>', { class: 'ExtBlocks-character-card' }).append(
+                    $('<div>', { class: 'ExtBlocks-character-actions' }).append(toggle),
+                    card,
+                );
+                this.characterActions?.(row, character, summary);
+                charactersSection.append(row);
+            } else {
+                charactersSection.append(card);
+            }
         }
         if (!this.save && !this.singleCharacter) charactersSection.append(button('Add character', () => this.addEntry('characters')));
 
@@ -246,14 +269,7 @@ export class CharacterLibraryEditor {
             ownerSelects.push({ select, outfit });
             const card = $('<details>', { class: 'ExtBlocks-outfit-card' }).prop('open', openId === outfit.id).append(
                 summary, fields,
-                button('Remove outfit', () => {
-                    this.library.outfits = outfits.filter(item => item !== outfit);
-                    for (const character of characters) {
-                        if (character.outfitId === outfit.id) character.outfitId = '';
-                    }
-                    this.render();
-                    void this.persist();
-                }),
+                button('Remove outfit', () => this.removeOutfit(outfit)),
             );
             outfitSummaries.set(outfit, { card, name, owner });
             wardrobe.append(card);

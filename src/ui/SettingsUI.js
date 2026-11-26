@@ -26,15 +26,12 @@ export const SettingsUI = {
      * Refreshes the set list in the settings panel.
      */
     refreshSetList() {
-        let sets_name = extStates.ExtBlocks_settings.sets.map(obj => obj.name);
-        $('#ExtBlocks-preset-list').empty();
-        sets_name.forEach(function(option) {
-            $('#ExtBlocks-preset-list').append($('<option>', {
-                value: option,
-                text: option
-            }));
-        });
-        $(`#ExtBlocks-preset-list option[value="${extStates.ExtBlocks_settings.active_set}"]`).attr('selected', true);
+        const { sets, active_set_idx } = extStates.ExtBlocks_settings;
+        const picker = $('#ExtBlocks-preset-list').empty();
+        for (const { name } of sets) {
+            picker.append(new Option(name, name));
+        }
+        picker.prop('selectedIndex', active_set_idx);
     },
 
     /**

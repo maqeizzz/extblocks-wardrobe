@@ -629,8 +629,7 @@ input.disable_ExtBlocks {
 
 .ExtBlocks-quick-tabs,
 .ExtBlocks-quick-toolbar,
-.ExtBlocks-outfit-choices,
-.ExtBlocks-quick-caption {
+.ExtBlocks-outfit-choices {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -677,14 +676,8 @@ input.disable_ExtBlocks {
 }
 
 .ExtBlocks-quick-list[data-mode="characters"] .ExtBlocks-wardrobe-section,
-.ExtBlocks-quick-list[data-mode="wardrobe"] .ExtBlocks-characters-section,
-.ExtBlocks-quick-caption:empty {
+.ExtBlocks-quick-list[data-mode="wardrobe"] .ExtBlocks-characters-section {
     display: none;
-}
-
-.ExtBlocks-quick-caption {
-    font-size: 0.85em;
-    margin-top: 0.75rem;
 }
 
 .ExtBlocks-character-card {

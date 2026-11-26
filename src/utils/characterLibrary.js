@@ -5,11 +5,15 @@ export function readCharacterLibrary(library) {
             outfitId: readText(outfitId),
             enabled: enabled !== false,
         })),
-        outfits: readEntries(library?.outfits, ({ tags, ownerId }) => ({
-            tags: readText(tags),
-            ownerId: readText(ownerId),
-        })),
+        outfits: readOutfits(library?.outfits),
     };
+}
+
+function readOutfits(outfits) {
+    return readEntries(outfits, ({ tags, ownerId }) => ({
+        tags: readText(tags),
+        ownerId: readText(ownerId),
+    }));
 }
 
 function readText(value) {
@@ -62,7 +66,7 @@ export function copyContextItemInclusion(target, source) {
 }
 
 export function getSharedOutfitChoices(sharedWardrobe) {
-    return readCharacterLibrary({ outfits: sharedWardrobe }).outfits.map(outfit => ({
+    return readOutfits(sharedWardrobe).map(outfit => ({
         ...outfit,
         id: `shared:${outfit.id}`,
         ownerId: '',
@@ -79,7 +83,7 @@ export function collectSharedOutfitChoices(settings, characterCards = []) {
     for (const block of blocks) {
         for (const item of Array.isArray(block?.context) ? block.context : []) {
             if (item?.type !== 'characters') continue;
-            for (const outfit of readCharacterLibrary(item.library).outfits) {
+            for (const outfit of readOutfits(item.library?.outfits)) {
                 if (!outfit.ownerId && !choices.has(outfit.id)) {
                     choices.set(outfit.id, { ...outfit, shared: true, source: block.name });
                 }

@@ -16,13 +16,12 @@ Open **ExtBlocks** from the wand menu next to the chat box. Choose a block in **
 
 ### Updating a hosted instance
 
-ExtBlocks 1.1.0 sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.
+ExtBlocks sends the selected chat-completion profile's model, endpoint and saved key ID independently of the chat profile. For a Custom (OpenAI-compatible) API, save the endpoint and key in the connection profile. Save any extra headers or body fields in the chat-completion preset assigned to that profile. Using profile-specific keys requires a SillyTavern server version that supports `secret_id` in chat-completion requests.
 
-Back up your ExtBlocks presets and replace the extension on the instance with this version. If your hosting panel installs extensions only from Git URLs, use a repository containing this version and replace the original installation. Run a single copy of ExtBlocks, since copies share settings and event handlers.
+Back up your ExtBlocks presets before replacing an installation. Run a single copy of ExtBlocks, since copies share settings and event handlers.
 
-	This extension allows for the external generation of content blocks.
-
-- **Repository**: `https://gitgud.io/Monblant/extblocks`
+- **Repository**: `https://github.com/bogusokmisha-maker/extblocks-wardrobe`
+- **Original project**: `https://gitgud.io/Monblant/extblocks` by Monblant.
 - **Installation**: `Extensions` → `Install extension` (top right) → Paste repository link.
 - **Updating**: `Extensions` → `Manage extensions` (top right) → Scroll down → Click `Update` next to ExtBlocks.
 

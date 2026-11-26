@@ -80,11 +80,8 @@ export const CharacterLibraryMenu = {
             picker.val(String(selected)).prop('disabled', !targets.length);
 
             const sharedChoices = () => collectSharedOutfitChoices(settings, SillyTavern.getContext().characters);
-            const showList = () => {
+            const filterList = () => {
                 const query = String(search.val()).trim().toLowerCase();
-                panel.attr('data-mode', mode);
-                tabs.children().each((_, tab) => $(tab).attr('aria-pressed', String(tab.dataset.mode === mode)));
-                if (mode === 'wardrobe') updateWardrobeRows();
                 const selector = mode === 'characters' ? '.ExtBlocks-character-card' : '.ExtBlocks-outfit-card';
                 let matches = 0;
                 panel.find(selector).each((_, entry) => {
@@ -105,6 +102,12 @@ export const CharacterLibraryMenu = {
                     ? targets.length ? 'No characters in this block.' : 'Create or import a block first.'
                     : 'No outfits yet.';
                 empty.text(query ? 'No matches.' : message).toggle(!matches);
+            };
+            const showList = () => {
+                panel.attr('data-mode', mode);
+                tabs.children().each((_, tab) => $(tab).attr('aria-pressed', String(tab.dataset.mode === mode)));
+                if (mode === 'wardrobe') updateWardrobeRows();
+                filterList();
             };
             const setWardrobeRows = (list, cards) => {
                 const rows = new Set(cards);
@@ -305,7 +308,7 @@ export const CharacterLibraryMenu = {
                     render();
                 }).attr('data-mode', key));
             }
-            search.on('input', showList);
+            search.on('input', filterList);
             const header = $('<header>', { class: 'ExtBlocks-quick-header' }).append(
                 $('<h3>').text('ExtBlocks'),
                 $('<label>').append($('<span>').text('Block preset'), picker),

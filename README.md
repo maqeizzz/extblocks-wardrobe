@@ -1,6 +1,6 @@
 # ExtBlocks (External Blocks)
 
-  For SillyTavern 1.15.0+
+  For SillyTavern 1.19.0+
 
 ### Characters & wardrobe
 

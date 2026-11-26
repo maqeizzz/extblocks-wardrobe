@@ -61,7 +61,8 @@ export class CharacterLibraryEditor {
         this.drafts.set(entry, draft);
         const update = (key, value) => {
             draft[key] = value;
-            for (const field of this.container.find('[data-extblocks-field]')) {
+            const forms = this.wardrobeCards ? this.container.add(this.wardrobeCards) : this.container;
+            for (const field of forms.find('[data-extblocks-field]')) {
                 const input = $(field);
                 if (input.data('entry') === entry && field.dataset.extblocksField === key && field.value !== value) {
                     field.value = value;
@@ -90,6 +91,7 @@ export class CharacterLibraryEditor {
 
     render(openId) {
         const { characters, outfits } = this.library;
+        this.wardrobeCards?.remove();
         this.container.empty();
 
         const ownerSelects = [];
@@ -98,8 +100,13 @@ export class CharacterLibraryEditor {
         const outfitSummaries = new Map();
         const refreshChoices = () => {
             const choices = mergeOutfitChoices(outfits, this.sharedChoices());
-            for (const [outfit, summary] of outfitSummaries) {
-                summary.text(outfit.name || 'Unnamed outfit');
+            for (const [outfit, { card, name, owner }] of outfitSummaries) {
+                name.text(outfit.name || 'Unnamed outfit');
+                if (owner) {
+                    const character = characters.find(entry => entry.id === outfit.ownerId);
+                    owner.text(outfit.ownerId ? (character ? character.name || 'Unnamed character' : 'Missing character') : '');
+                    card.attr('data-outfit-scope', outfit.ownerId ? 'personal' : 'shared');
+                }
             }
             for (const { select, outfit } of [...ownerSelects, ...inlineOutfits.map(entry => entry.owner).filter(Boolean)]) {
                 fillOwnerSelect(select, outfit);
@@ -231,12 +238,13 @@ export class CharacterLibraryEditor {
         const wardrobe = $('<div>', { class: 'ExtBlocks-wardrobe-section' });
         if (!this.save) wardrobe.append($('<h4>').text('Wardrobe'));
         for (const outfit of outfits) {
-            const summary = $('<summary>').text(outfit.name || 'Unnamed outfit');
-            outfitSummaries.set(outfit, summary);
+            const name = $('<span>', { class: 'ExtBlocks-outfit-name' });
+            const owner = this.save ? $('<span>', { class: 'ExtBlocks-outfit-owner' }) : null;
+            const summary = $('<summary>').append(name, ...(owner ? [owner] : []));
             const select = ownerSelect(outfit);
             const fields = outfitFields(outfit, select);
             ownerSelects.push({ select, outfit });
-            wardrobe.append($('<details>', { class: 'ExtBlocks-outfit-card' }).prop('open', openId === outfit.id).append(
+            const card = $('<details>', { class: 'ExtBlocks-outfit-card' }).prop('open', openId === outfit.id).append(
                 summary, fields,
                 button('Remove outfit', () => {
                     this.library.outfits = outfits.filter(item => item !== outfit);
@@ -246,11 +254,14 @@ export class CharacterLibraryEditor {
                     this.render();
                     void this.persist();
                 }),
-            ));
+            );
+            outfitSummaries.set(outfit, { card, name, owner });
+            wardrobe.append(card);
         }
         if (!this.save) wardrobe.append(button('Add outfit', () => this.addEntry('wardrobe')));
 
         this.container.append(charactersSection, wardrobe);
+        if (this.save) this.wardrobeCards = wardrobe.children('.ExtBlocks-outfit-card');
         this.refreshOutfitChoices = refreshChoices;
         refreshChoices();
         this.onRender?.();

@@ -568,6 +568,47 @@ input.disable_ExtBlocks {
     inset-inline-end: 0.9rem;
 }
 
+.ExtBlocks-wardrobe-group + .ExtBlocks-wardrobe-group {
+    margin-block-start: 1.1rem;
+}
+
+.ExtBlocks-wardrobe-rows {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.ExtBlocks-quick-library-v5 .ExtBlocks-wardrobe-rows .ExtBlocks-outfit-card {
+    margin: 0;
+    padding: 0;
+    border-radius: 0.55rem;
+    overflow-wrap: anywhere;
+}
+
+.ExtBlocks-wardrobe-rows .ExtBlocks-outfit-card > summary {
+    padding: 0.45rem 0.65rem;
+}
+
+.ExtBlocks-wardrobe-rows .ExtBlocks-outfit-card[open] > summary {
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.ExtBlocks-wardrobe-rows .ExtBlocks-outfit-card[open] {
+    padding-block-end: 0.35rem;
+}
+
+.ExtBlocks-wardrobe-rows .ExtBlocks-outfit-card > :not(summary) {
+    margin-inline: 0.65rem;
+}
+
+.ExtBlocks-wardrobe-rows .ExtBlocks-outfit-owner:not(:empty) {
+    display: inline-block;
+    margin-inline-start: 0.5rem;
+    padding: 0.05em 0.4em;
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 0.4rem;
+    font-size: 0.85em;
+}
+
 .ExtBlocks-quick-library-v5 :focus-visible {
     outline: 2px solid var(--SmartThemeQuoteColor);
     outline-offset: 2px;

@@ -47,7 +47,11 @@ export const CharacterLibraryMenu = {
             const status = $('<div>', { role: 'status', class: 'ExtBlocks-quick-status' });
             const picker = $('<select>', { class: 'text_pole', 'aria-label': 'Block preset' });
             const empty = $('<p>', { class: 'ExtBlocks-quick-empty' });
-            const inheritedOutfits = $('<div>');
+            const sharedRows = $('<div>', { class: 'ExtBlocks-wardrobe-rows' });
+            const personalRows = $('<div>', { class: 'ExtBlocks-wardrobe-rows' });
+            const sharedSection = $('<section>', { class: 'ExtBlocks-wardrobe-group' }).append($('<h4>').text('Shared wardrobe'), sharedRows);
+            const personalSection = $('<section>', { class: 'ExtBlocks-wardrobe-group' }).append($('<h4>').text('Personal outfits'), personalRows);
+            const inheritedOutfits = new Map();
             const cached = new Map();
             let mode = 'characters';
             let selected = targets.findIndex(target => target.setIndex === settings.active_set_idx);
@@ -79,33 +83,67 @@ export const CharacterLibraryMenu = {
             const showList = () => {
                 const query = String(search.val()).trim().toLowerCase();
                 panel.attr('data-mode', mode);
-                if (mode === 'wardrobe') {
-                    const context = targets[selected]?.block.context;
-                    const items = Array.isArray(context) ? context : [];
-                    const localIds = new Set(items.flatMap(item => readCharacterLibrary(item?.library).outfits.map(outfit => outfit.id)));
-                    inheritedOutfits.empty();
-                    for (const outfit of sharedChoices()) {
-                        if (outfit.source === undefined || localIds.has(outfit.id)) continue;
-                        inheritedOutfits.append($('<details>', { class: 'ExtBlocks-outfit-card' }).append(
-                            $('<summary>').text(outfit.name || 'Unnamed outfit'),
-                            $('<p>').text(outfit.tags),
-                            $('<small>').text(`Edit in ${outfit.source || 'the original block'}`),
-                        ));
-                    }
-                }
                 tabs.children().each((_, tab) => $(tab).attr('aria-pressed', String(tab.dataset.mode === mode)));
+                if (mode === 'wardrobe') updateWardrobeRows();
                 const selector = mode === 'characters' ? '.ExtBlocks-character-card' : '.ExtBlocks-outfit-card';
                 let matches = 0;
                 panel.find(selector).each((_, entry) => {
                     const summary = entry.querySelector('summary');
-                    const show = summary.textContent.toLowerCase().includes(query);
+                    const label = summary.querySelector('.ExtBlocks-outfit-name');
+                    const owner = summary.querySelector('.ExtBlocks-outfit-owner');
+                    const text = label ? `${label.textContent} ${owner?.textContent ?? ''}` : summary.textContent;
+                    const show = text.trim().toLowerCase().includes(query);
                     $(entry).toggle(show);
                     if (show) matches++;
                 });
+                if (mode === 'wardrobe') {
+                    for (const [section, rows] of [[sharedSection, sharedRows], [personalSection, personalRows]]) {
+                        section.toggle(rows.children().toArray().some(row => row.style.display !== 'none'));
+                    }
+                }
                 const message = mode === 'characters'
                     ? targets.length ? 'No characters in this block.' : 'Create or import a block first.'
                     : 'No outfits yet.';
                 empty.text(query ? 'No matches.' : message).toggle(!matches);
+            };
+            const setWardrobeRows = (list, cards) => {
+                const rows = new Set(cards);
+                const container = list.get(0);
+                list.children().each((_, row) => {
+                    if (!rows.has(row)) $(row).detach();
+                });
+                cards.forEach((row, index) => {
+                    const next = container.children[index] ?? null;
+                    if (next !== row) container.insertBefore(row, next);
+                });
+            };
+            const updateWardrobeRows = () => {
+                const target = targets[selected];
+                const editors = cached.get(target) ?? [];
+                const localIds = new Set(editors.flatMap(editor => editor.library.outfits.map(outfit => outfit.id)));
+                const localCards = editors.flatMap(editor => editor.wardrobeCards.toArray());
+                const inherited = [];
+                for (const outfit of sharedChoices()) {
+                    if (outfit.source === undefined || localIds.has(outfit.id)) continue;
+                    if (!inheritedOutfits.has(outfit.id)) {
+                        inheritedOutfits.set(outfit.id, $('<details>', { class: 'ExtBlocks-outfit-card' }).append(
+                            $('<summary>').append($('<span>', { class: 'ExtBlocks-outfit-name' })),
+                            $('<p>'),
+                            $('<small>'),
+                        ));
+                    }
+                    const card = inheritedOutfits.get(outfit.id);
+                    card.find('.ExtBlocks-outfit-name').text(outfit.name || 'Unnamed outfit');
+                    card.children('p').text(outfit.tags);
+                    card.children('small').text(`Edit in ${outfit.source || 'the original block'}`);
+                    inherited.push(card.get(0));
+                }
+                setWardrobeRows(sharedRows, [
+                    ...shared.wardrobeCards.toArray(),
+                    ...localCards.filter(card => card.dataset.outfitScope === 'shared'),
+                    ...inherited,
+                ]);
+                setWardrobeRows(personalRows, localCards.filter(card => card.dataset.outfitScope === 'personal'));
             };
             const shared = new CharacterLibraryEditor($('<div>'), uuidv4, {
                 sharedOnly: true,
@@ -227,15 +265,14 @@ export const CharacterLibraryMenu = {
                 panel.children().detach();
                 const target = targets[selected];
                 if (mode === 'wardrobe') {
-                    panel.append($('<section>').append($('<h4>').text('Shared wardrobe'), shared.container, inheritedOutfits));
-                }
-                if (target) {
+                    if (target) editorsForBlock(target);
+                    panel.append(sharedSection, personalSection);
+                } else if (target) {
                     const blockPanel = $('<section>', { class: 'ExtBlocks-quick-block-panel' });
-                    if (mode === 'wardrobe') blockPanel.append($('<h4>').text(target.block.name));
                     for (const editor of editorsForBlock(target)) blockPanel.append(editor.container);
                     panel.append(blockPanel);
                 }
-                const label = mode === 'characters' ? 'Search characters' : 'Search outfits';
+                const label = mode === 'characters' ? 'Search characters' : 'Search outfits or owners';
                 search.attr('aria-label', label).attr('placeholder', label);
                 add.prop('disabled', mode === 'characters' && !target);
                 add.children('span').text(mode === 'characters' ? 'Add character' : 'Add shared outfit');
